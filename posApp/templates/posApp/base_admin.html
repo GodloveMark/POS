@@ -1,0 +1,78 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Admin Dashboard | POS{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Core CSS -->
+    <link href="{% static 'posApp/assets/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="{% static 'posApp/assets/select2/dist/css/select2.min.css' %}" rel="stylesheet">
+    <link href="{% static 'posApp/assets/material-admin/css/demo/style.css' %}" rel="stylesheet">
+    
+    <!-- Optional custom admin styles -->
+    <link href="{% static 'posApp/assets/default/css/admin-style.css' %}" rel="stylesheet">
+
+    <!-- JS -->
+    <script src="{% static 'posApp/assets/default/js/jquery-3.6.0.min.js' %}"></script>
+
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background-color: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+        }
+        .sidebar a {
+            display: block;
+            padding: 10px 15px;
+            color: #000;
+            text-decoration: none;
+        }
+        .sidebar a:hover {
+            background-color: #e2e6ea;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <nav class="col-md-2 sidebar py-4">
+            <h5 class="text-center">Admin</h5>
+            <a href="{% url 'admin_dashboard' %}">Dashboard</a>
+            <a href="{% url 'create_store' %}">Create Store</a>
+           <!---- <a href="{% url 'register_user' %}?role=manager">Create Manager</a>-->
+            <a href="{% url 'user_list' %}">User Management</a>
+            <a href="{% url 'logout' %}">Logout</a>
+        </nav>
+
+        <!-- Page content -->
+        <main class="col-md-10 ms-sm-auto px-4 py-4">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+            
+            {% block pageContent %}{% endblock pageContent %}
+        </main>
+    </div>
+
+    <footer class="text-center mt-5 mb-3">
+        <hr>
+        <p class="text-muted">&copy; {% now 'Y' %} POS Admin Dashboard</p>
+    </footer>
+</div>
+
+<!-- JS scripts -->
+ <!-- In report.html -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script src="{% static 'posApp/assets/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'posApp/assets/select2/dist/js/select2.full.js' %}"></script>
+{% block extra_scripts %}{% endblock extra_scripts %}
+</body>
+</html>

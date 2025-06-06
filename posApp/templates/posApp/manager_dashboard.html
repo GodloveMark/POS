@@ -1,0 +1,36 @@
+{% extends "posApp/base.html" %} {% block pageContent %}
+<body class="container mt-5">
+    <h2>Welcome, {{ request.user.username }} (Manager)</h2>
+
+    <a href="{% url 'register_cashier' %}" class="btn btn-primary mb-3">+ Add New Cashier</a>
+
+    <h4>Cashiers in Your Store</h4>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Joined</th>
+                <th>Active</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cashier in cashiers %}
+                <tr>
+                    <td>{{ cashier.username }}</td>
+                    <td>{{ cashier.date_joined }}</td>
+                    <td>{{ cashier.is_active }}</td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="3">No cashiers found.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <form method="POST" action="{% url 'logout_user' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger mt-3">Logout</button>
+    </form>
+</body>
+{% endblock pageContent %}
