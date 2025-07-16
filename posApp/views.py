@@ -543,17 +543,21 @@ def save_pos(request):
         qtys = request.POST.getlist('qty[]')
         tendered_amount = Decimal(request.POST.get('tendered_amount', '0'))
 
+        is_credit = request.POST.get('is_credit') == 'true'
+        customer_id = request.POST.get('customer_id')
+        due_date = request.POST.get('due_date')
+        amount_paid = Decimal(request.POST.get('amount_paid', '0'))
+
         current_store = Store.objects.filter(owner=request.user).first()
 
         if not product_ids:
             return JsonResponse({'status': 'failed', 'msg': 'No products provided'})
 
         sub_total = Decimal('0.00')
-
         for idx, pid in enumerate(product_ids):
             product = Product.objects.get(id=pid, store=current_store)
             qty = Decimal(qtys[idx])
-            price = product.price
+            price = Decimal(product.price)
 
             cart_items.append({
                 'product_id': int(pid),
@@ -563,27 +567,51 @@ def save_pos(request):
             sub_total += price * qty
 
         # Compute tax
-        tax = Decimal('0.18')  # e.g., 18% VAT
+        tax = Decimal('0.18')  # 18% VAT
         tax_amount = sub_total * tax
         grand_total = sub_total + tax_amount
-        amount_change = tendered_amount - grand_total
 
-        sale = process_checkout(
-            cart_items=cart_items,
+        # If not credit, use tendered amount; else use amount_paid
+        if is_credit:
+            tendered = amount_paid
+        else:
+            tendered = tendered_amount
+
+        amount_change = tendered - grand_total if not is_credit else 0
+
+        # Get customer if provided
+        customer = Customer.objects.filter(id=customer_id).first() if customer_id else None
+        parsed_due_date = datetime.strptime(due_date, "%Y-%m-%d").date() if due_date else None
+
+        # Save Sale
+        sale = Sales.objects.create(
             store=current_store,
             user=request.user,
+            cashier=request.user,
             sub_total=sub_total,
             tax=tax,
             tax_amount=tax_amount,
             grand_total=grand_total,
-            tendered_amount=tendered_amount,
-            amount_change=amount_change
+            tendered_amount=tendered,
+            amount_change=amount_change,
+            is_credit=is_credit,
+            customer=customer,
+            due_date=parsed_due_date,
+            amount_paid=amount_paid if is_credit else tendered_amount,
         )
+
+        # Save Sale Items (you can add FIFO logic here if needed)
+        for item in cart_items:
+            SalesItem.objects.create(
+                sale=sale,
+                product_id=item['product_id'],
+                qty=item['qty'],
+                price=Product.objects.get(id=item['product_id']).price
+            )
 
         return JsonResponse({'status': 'success', 'sale_id': sale.id})
     except Exception as e:
         return JsonResponse({'status': 'failed', 'msg': str(e)})
-
 #def save_pos(request):
 #    try:
 #        cart_items = []
@@ -1319,3 +1347,144 @@ def process_checkout(cart_items, store, user, sub_total, tax, tax_amount, grand_
 
 def get_current_stock(product):
     return sum(entry.remaining_quantity for entry in StockEntry.objects.filter(product=product))
+
+
+@login_required
+def credit_sales(request): 
+    store = Store.objects.filter(owner=request.user).first()
+    products = Product.objects.filter(store=store)
+    customers = Customer.objects.filter(store=store)
+
+    if request.method == 'POST':
+        customer_id = request.POST.get('customer_id')
+        due_date = request.POST.get('due_date')
+        amount_paid = Decimal(request.POST.get('amount_paid') or 0)
+        product_ids = request.POST.getlist('product_id[]')
+        qtys = request.POST.getlist('qty[]')
+
+        if not customer_id or not due_date or not product_ids:
+            messages.error(request, "Missing fields.")
+            return redirect('credit-sale')
+
+        sub_total = Decimal('0.00')
+        cart_items = []
+
+        for i, pid in enumerate(product_ids):
+            product = Product.objects.get(id=pid)
+            qty = Decimal(qtys[i])
+            cart_items.append({'product': product, 'qty': qty})
+            sub_total += product.price * qty
+
+        tax = Decimal('0.18')
+        tax_amount = sub_total * tax
+        grand_total = sub_total + tax_amount
+        amount_change = amount_paid - grand_total
+
+        # Save the sale
+        sale = Sales.objects.create(
+            store=store,
+            user=request.user,
+            cashier=request.user,
+            sub_total=sub_total,
+            tax=tax,
+            tax_amount=tax_amount,
+            grand_total=grand_total,
+            tendered_amount=amount_paid,
+            amount_change=amount_change,
+            date_added=timezone.now()
+        )
+
+        # Save each product in SalesItem
+        for item in cart_items:
+            SalesItem.objects.create(
+                sale=sale,
+                product=item['product'],
+                qty=item['qty'],
+                price=item['product'].price
+            )
+
+        # Optional: Record credit metadata if needed (e.g., due_date, customer)
+        sale.customer = Customer.objects.get(id=customer_id)
+        sale.due_date = due_date  # Add `due_date` to your Sales model if needed
+        sale.save()
+
+        messages.success(request, "Credit sale recorded.")
+        return redirect('sales-page')
+
+    return render(request, 'posApp/credit_sales.html', {
+        'products': products,
+        'customers': customers,
+    })
+
+
+@login_required
+def credit_sale_view(request):
+    store = Store.objects.filter(owner=request.user).first()
+    customers = Customer.objects.filter(store=store)
+    return render(request, 'posApp/credit_sale.html', {'customers': customers})
+
+@login_required
+def credit_sales_report(request):
+    store = Store.objects.filter(owner=request.user).first()
+    credit_sales = Sales.objects.filter(
+        store=store,
+        tendered_amount__lt=F('grand_total')
+    ).select_related('user', 'cashier').order_by('-date_added')
+
+    return render(request, 'posApp/credit_sales_report.html', {
+        'credit_sales': credit_sales
+    })
+
+
+
+from decimal import Decimal
+
+@login_required
+@require_POST
+def save_credit_sale(request):
+    store = Store.objects.filter(owner=request.user).first()
+    customer_id = request.POST.get('customer')
+    customer = Customer.objects.filter(id=customer_id, store=store).first()
+    amount_paid = Decimal(request.POST.get('amount_paid', 0))
+
+    # Simulated for now: You'd typically receive products via JS/AJAX
+    # For now assume it's predefined or hardcoded for example purposes
+    cart_items = [
+        {'product_id': 1, 'qty': 2},
+        {'product_id': 2, 'qty': 1}
+    ]
+
+    sub_total = Decimal(0)
+    for item in cart_items:
+        product = Product.objects.get(id=item['product_id'], store=store)
+        sub_total += Decimal(product.price) * Decimal(item['qty'])
+
+    tax = Decimal('0.18')
+    tax_amount = sub_total * tax
+    grand_total = sub_total + tax_amount
+    balance = grand_total - amount_paid
+
+    if amount_paid >= grand_total:
+        status = 'paid'
+    elif amount_paid > 0:
+        status = 'partial'
+    else:
+        status = 'unpaid'
+
+    sale = Sales.objects.create(
+        store=store,
+        user=request.user,
+        cashier=request.user,
+        sub_total=sub_total,
+        tax=tax,
+        tax_amount=tax_amount,
+        grand_total=grand_total,
+        tendered_amount=amount_paid,
+        amount_change=Decimal('0.00'),
+        customer=customer,
+        payment_status=status
+    )
+
+    # Add SalesItems and deduct from FIFO stock here
+
+    return redirect('credit-sales')

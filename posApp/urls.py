@@ -49,6 +49,9 @@ urlpatterns = [
     path('stock/list/', views.stock_entry_list, name='stock_entry_list'),
     path('report/', views.report_view, name='sales-report'),
     path('expenditure/delete/<int:pk>/', views.delete_expenditure, name='delete_expenditure'),
+    path('credit-sales/', views.credit_sales, name='credit-sales'),
+    path('credit-sales/report/', views.credit_sales_report, name='credit-sales-report')
+
 
 
     # path('employees', views.employees, name="employee-page"),

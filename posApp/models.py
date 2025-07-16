@@ -105,29 +105,42 @@ class Product(models.Model):
     def __str__(self):
         return f"{self.code} - {self.name}"
 
-
+from django.db.models import F
 import uuid
 from django.contrib.auth import get_user_model
 User = get_user_model()
 
 class Sales(models.Model):
-    
-    user = models.ForeignKey(settings.AUTH_USER_MODEL,  on_delete=models.SET_NULL, null=True, blank=True, related_name='sales_as_user')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='sales_as_user')
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
     code = models.CharField(max_length=100, unique=True)
+    customer = models.ForeignKey('Customer', null=True, blank=True, on_delete=models.SET_NULL)
     sub_total = models.FloatField(default=0)
     grand_total = models.FloatField(default=0)
     tax_amount = models.FloatField(default=0)
     tax = models.FloatField(default=0)
-    tendered_amount = models.FloatField(default=0)
-    amount_change = models.FloatField(default=0)
-    cashier = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='sales_as_cashier')  # NEW: Who made the sale
+    tendered_amount = models.FloatField(default=0)  # What the customer gave you at the counter
+    amount_change = models.FloatField(default=0)    # Change given back
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # NEW: Paid so far
+    is_credit = models.BooleanField(default=False)  # NEW: Flag if it's a credit sale
+    due_date = models.DateField(null=True, blank=True)  # Optional: Due date for payment
+    cashier = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='sales_as_cashier')
     date_added = models.DateTimeField(default=timezone.now)
     date_updated = models.DateTimeField(auto_now=True)
+    payment_status = models.CharField(max_length=20, choices=[
+        ('paid', 'Paid'),
+        ('partial', 'Partially Paid'),
+        ('unpaid', 'Unpaid')
+    ], default='paid')
+
+    def balance(self):
+        return Decimal(self.grand_total) - self.amount_paid
+
+    def is_fully_paid(self):
+        return self.amount_paid >= Decimal(self.grand_total)
 
     def save(self, *args, **kwargs):
         if not self.code:
-            # Generate unique code like S-<UUID4> (or you can use a better format)
             self.code = f"S-{uuid.uuid4().hex[:8].upper()}"
         super().save(*args, **kwargs)
 
