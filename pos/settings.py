@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -133,11 +134,26 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
+
+
+# At the top
 STATIC_URL = '/static/'
-STATICFILES_DIRS = (
-    # location of your application, should not be public web accessible 
-    './static',
-)
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Optional but recommended
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),  # If you use a static/ folder for development
+]
+
+# Enable WhiteNoise
+MIDDLEWARE = [
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    *MIDDLEWARE,  # Keep all your other middleware
+]
+
+# Enable compression (optional)
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
