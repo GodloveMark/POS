@@ -29,14 +29,14 @@ ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
     'a16d-196-41-56-187.ngrok-free.app',
-    'pos.onrender.com',
+    'pos-qqym.onrender.com',
     ]
 CSRF_TRUSTED_ORIGINS = [
      # Render domain
     'https://localhost',                # Local development (if applicable)
     'https://127.0.0.1',                # Local development (if applicable)
     'https://a16d-196-41-56-187.ngrok-free.app',
-    'https://pos.onrender.com',
+    'https://pos-qqym.onrender.com',
 ]
 
 # Application definition
