@@ -134,6 +134,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
+# Only do this in development or when debugging deploys
+WHITENOISE_MANIFEST_STRICT = False
 
 
 # At the top
@@ -150,6 +152,7 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     *MIDDLEWARE,  # Keep all your other middleware
 ]
+
 
 # Enable compression (optional)
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
