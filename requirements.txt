@@ -1,0 +1,21 @@
+# Django and WSGI Server
+Django>=4.2,<5.0
+gunicorn
+
+# Database support (PostgreSQL)
+#psycopg2-binary
+
+# For handling images (optional but common)
+Pillow
+
+# Environment variables management
+python-decouple
+
+# If you use whitenoise for serving static files (Render/Heroku)
+whitenoise
+
+# If using Django REST Framework
+djangorestframework
+
+# Optional: for CORS (e.g. if frontend is separate)
+django-cors-headers
