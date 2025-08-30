@@ -1,22 +1,33 @@
-{% extends "posApp/base.html" %} {% load humanize %} {% block pageContent %}
+{% extends "posApp/base.html" %} 
+{% load humanize %}
+{% block pageContent %}
 <div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
-    <div class="mdc-card py-2">
-        <div class="d-flex justify-content-between align-items-center">
-            <h4 class="card-title mb-0">Sales List</h4>
-        </div>
+    <div class="mdc-card py-2 d-flex justify-content-between align-items-right">
+        <h4 class="card-title mb-0">Sales List</h4>
     </div>
+        <div class="d-flex">
+            <input type="text" id="search-box" class="form-control me-2" placeholder="Search transactions...">
+            <select id="items-per-page" class="form-select" style="width:auto;">
+                <option value="5">5 per page</option>
+                <option value="10" selected>10 per page</option>
+                <option value="20">20 per page</option>
+            </select>
+        </div>
+    
 </div>
+
 <div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
     <div class="mdc-card">
         <div class="table-responsive">
-            <table class="table table-striped table-bordered">
+            <table id="sales-table" class="table table-striped table-bordered">
                 <colgroup>
                     <col width="5%">
                     <col width="20%">
                     <col width="20%">
-                    <col width="25%">
                     <col width="15%">
                     <col width="15%">
+                    <col width="15%">
+                    <col width="10%">
                 </colgroup>
                 <thead>
                     <tr>
@@ -39,10 +50,12 @@
                         <td class="px-2 py-1 text-end">({{ sale.tax }}%) {{ sale.tax_amount|intcomma:2 }}</td>
                         <td class="px-2 py-1 text-center">{{ sale.item_count|intcomma }}</td>
                         <td class="px-2 py-1 text-center">
-                            <button class="mdc-button mdc-button--raised p-1 icon-button filled-button--light mdc-ripple-upgraded view-data" type="button" data-id="{{ sale.id }}" title="View Receipt">
+                            <button class="mdc-button mdc-button--raised p-1 icon-button filled-button--light view-data" 
+                                    type="button" data-id="{{ sale.id }}" title="View Receipt">
                                 <i class="material-icons mdc-button__icon">receipt</i>
                             </button>
-                            <button class="mdc-button mdc-button--raised p-1 icon-button filled-button--danger mdc-ripple-upgraded delete-data" type="button" data-id="{{ sale.id }}" data-code="{{ sale.code }}" title="Delete">
+                            <button class="mdc-button mdc-button--raised p-1 icon-button filled-button--danger delete-data" 
+                                    type="button" data-id="{{ sale.id }}" data-code="{{ sale.code }}" title="Delete">
                                 <i class="material-icons mdc-button__icon">deleteoutline</i>
                             </button>
                         </td>
@@ -51,46 +64,90 @@
                 </tbody>
             </table>
         </div>
+
+        <nav>
+            <ul class="pagination" id="pagination"></ul>
+        </nav>
     </div>
 </div>
-{% endblock pageContent %} {% block ScriptBlock %}
-<script>
-    $(function() {
-        $('.view-data').click(function() {
-            uni_modal("Transaction's Receipt", "{% url 'receipt-modal' %}?id=" + $(this).attr('data-id'))
-        })
-        $('.delete-data').click(function() {
-            _conf("Are you sure to delete <b>" + $(this).attr('data-code') + "</b> Transaction record?", "delete_sale", [$(this).attr('data-id')])
-        })
+{% endblock pageContent %}
 
-    })
+{% block ScriptBlock %}
+<script>
+$(function() {
+    // View and delete actions
+    $('.view-data').click(function() {
+        uni_modal("Transaction's Receipt", "{% url 'receipt-modal' %}?id=" + $(this).attr('data-id'));
+    });
+    $('.delete-data').click(function() {
+        _conf("Are you sure to delete <b>" + $(this).attr('data-code') + "</b> Transaction record?", "delete_sale", [$(this).attr('data-id')]);
+    });
 
     function delete_sale($id) {
         start_loader();
         $.ajax({
-            headers: {
-                "X-CSRFToken": '{{csrf_token}}'
-            },
+            headers: { "X-CSRFToken": '{{csrf_token}}' },
             url: "{% url 'delete-sale' %}",
             method: "POST",
-            data: {
-                id: $id
-            },
+            data: { id: $id },
             dataType: "json",
-            error: err => {
-                console.log(err)
-                alert_toast("An error occured.", 'error');
-                end_loader();
-            },
+            error: err => { console.log(err); alert_toast("An error occured.", 'error'); end_loader(); },
             success: function(resp) {
-                if (typeof resp == 'object' && resp.status == 'success') {
-                    location.reload();
-                } else {
-                    alert_toast("An error occured.", 'error');
-                    end_loader();
-                }
+                if (resp.status === 'success') location.reload();
+                else { alert_toast("An error occured.", 'error'); end_loader(); }
             }
-        })
+        });
     }
+
+    // Frontend pagination & search
+    const table = document.getElementById('sales-table');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const searchBox = document.getElementById('search-box');
+    const itemsPerPageSelect = document.getElementById('items-per-page');
+    const pagination = document.getElementById('pagination');
+
+    let currentPage = 1;
+    let itemsPerPage = parseInt(itemsPerPageSelect.value);
+
+    function renderTable() {
+        const searchTerm = searchBox.value.toLowerCase();
+        const filteredRows = rows.filter(row => row.innerText.toLowerCase().includes(searchTerm));
+
+        const totalPages = Math.ceil(filteredRows.length / itemsPerPage);
+        if (currentPage > totalPages) currentPage = totalPages || 1;
+
+        tbody.innerHTML = '';
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        filteredRows.slice(start, end).forEach(r => tbody.appendChild(r));
+
+        renderPagination(totalPages);
+    }
+
+    function renderPagination(totalPages) {
+        pagination.innerHTML = '';
+        for (let i = 1; i <= totalPages; i++) {
+            const li = document.createElement('li');
+            li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+            const a = document.createElement('a');
+            a.className = 'page-link';
+            a.href = '#';
+            a.textContent = i;
+            a.addEventListener('click', e => {
+                e.preventDefault();
+                currentPage = i;
+                renderTable();
+            });
+            li.appendChild(a);
+            pagination.appendChild(li);
+        }
+    }
+
+    searchBox.addEventListener('input', () => { currentPage = 1; renderTable(); });
+    itemsPerPageSelect.addEventListener('change', () => { itemsPerPage = parseInt(itemsPerPageSelect.value); currentPage = 1; renderTable(); });
+
+    renderTable(); // Initial render
+});
 </script>
 {% endblock ScriptBlock %}

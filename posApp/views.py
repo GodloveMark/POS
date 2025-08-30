@@ -269,6 +269,7 @@ def manage_Product(request):
     product = {}
     stores = Store.objects.filter(owner=request.user)
     categories = Category.objects.filter(store__in=stores).all()
+    units = Unit.objects.all()
     if request.method == 'GET':
         data =  request.GET
         id = ''
@@ -281,6 +282,7 @@ def manage_Product(request):
         'product' : product,
         'categories' : categories,
         'stores' : stores,
+        'units': units,
     }
     return render(request, 'posApp/manage_product.html',context)
 
@@ -567,7 +569,7 @@ def save_pos(request):
             sub_total += price * qty
 
         # Compute tax
-        tax = Decimal('0.18')  # 18% VAT
+        tax = Decimal('0.18')  # 18% VAT  
         tax_amount = sub_total * tax
         grand_total = sub_total + tax_amount
 
@@ -1264,7 +1266,7 @@ def stock_entry_list(request):
 
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from .models import Product, StockEntry, SalesItem, Sales
+from .models import Product, StockEntry, SalesItem, Sales, Unit
 
 from django.db import transaction
 from django.shortcuts import get_object_or_404

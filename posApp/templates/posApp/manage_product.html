@@ -39,6 +39,15 @@
                 <label for="name" class="control-label">Product Name</label>
                 <input type="text" name="name" id="name" class="form-control form-control-sm rounded-0" value="{% if product.name %}{{product.name}}{% endif %}" required>
             </div>
+
+            <div class="form-group mb-3">
+            <label for="unit">Unit</label>
+<select name="unit" class="form-select form-select-sm rounded-0" required>
+  {% for unit in units %}
+    <option value="{{ unit.id }}" {% if product.unit and product.unit.id == unit.id %}selected{% endif %}>{{ unit.name }} ({{ unit.short_name }})</option>
+  {% endfor %}
+</select>
+            </div>
                        
             <div class="form-group mb-3">
                 <label for="stock" class="control-label">Stock</label>

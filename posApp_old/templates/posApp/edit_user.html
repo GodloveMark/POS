@@ -1,0 +1,33 @@
+{% extends "posApp/base.html" %} {% block pageContent %}
+<body class="container mt-5">
+    <h2>Edit User</h2>
+    <form method="POST">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label>Username</label>
+            <input type="text" name="username" class="form-control" value="{{ user_obj.username }}" required>
+        </div>
+        <div class="mb-3">
+            <label>Role</label>
+            <select name="role" class="form-select" required>
+                <option value="manager" {% if user_obj.role == 'manager' %}selected{% endif %}>Manager</option>
+                <option value="cashier" {% if user_obj.role == 'cashier' %}selected{% endif %}>Cashier</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label>Store</label>
+            <select name="store_id" class="form-select" required>
+                {% for store in stores %}
+                    <option value="{{ store.id }}" {% if assigned_store and store.id == assigned_store.id %}selected{% endif %}>{{ store.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label>New Password (leave blank to keep current)</label>
+            <input type="password" name="password" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-primary">Update User</button>
+        <a href="{% url 'user_list' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</body>
+{% endblock pageContent %}

@@ -1,0 +1,43 @@
+
+
+{% extends 'posApp/base_admin.html' %} {% block pageContent %}
+
+    <h2>Admin Dashboard</h2>
+
+    
+    <h4>Create  New Store and Manager</h4>
+
+
+   <form method="POST" action="{% url 'create_store_and_manager' %}">
+    {% csrf_token %}
+
+    <hr>
+    <!-- Store Section -->
+     <h5>Store Details</h5>
+    <div class="mb-3">
+        <input type="text" name="store_name" class="form-control" placeholder="Store Name" required>
+    </div>
+    <div class="mb-3">
+        <input type="text" name="store_location" class="form-control" placeholder="Location (optional)">
+    </div>
+
+    <hr>
+
+    <!-- Manager Section -->
+     <h5>Store Manager Details</h5>
+    <div class="mb-3">
+        <input type="text" name="username" class="form-control" placeholder="Manager Username" required>
+    </div>
+    <div class="mb-3">
+        <input type="password" name="password" class="form-control" placeholder="Password" required>
+    </div>
+
+    <input type="hidden" name="role" value="manager">
+    
+    <button type="submit" class="btn btn-primary">Create Store & Manager</button>
+</form>
+
+
+{% endblock pageContent %}
+
+

@@ -1,4 +1,7 @@
-{% extends "posApp/base.html" %} {% load humanize %} {% block pageContent %}
+{% extends "posApp/base.html" %} 
+{% load humanize %} 
+
+{% block pageContent %}
 <div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
     <div class="mdc-card py-2">
         <div class="d-flex justify-content-between align-items-center">
@@ -7,17 +10,20 @@
         </div>
     </div>
 </div>
+
 <div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
     <div class="mdc-card">
+        <div class="d-flex justify-content-between mb-2">
+            <input type="text" id="searchInput" class="form-control w-25" placeholder="Search by name, phone, or email">
+            <select id="rowsPerPage" class="form-control w-25 ms-2">
+                <option value="5">5 per page</option>
+                <option value="10" selected>10 per page</option>
+                <option value="20">20 per page</option>
+            </select>
+        </div>
+
         <div class="table-responsive">
-            <table class="table table-striped table-bordered">
-                <colgroup>
-                    <col width="5%">
-                    <col width="25%">
-                    <col width="20%">
-                    <col width="25%">
-                    <col width="25%">
-                </colgroup>
+            <table id="customerTable" class="table table-striped table-bordered">
                 <thead>
                     <tr>
                         <th class="text-center py-1">#</th>
@@ -36,14 +42,78 @@
                         <td class="px-2 py-1 text-start">{{ c.email|default:"—" }}</td>
                         <td class="px-2 py-1 text-start">{{ c.location }}</td>
                     </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center text-muted">No customers found.</td>
-                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+
+        <!-- Pagination Controls -->
+        <div class="d-flex justify-content-between align-items-center mt-2">
+            <span id="pageInfo" class="text-muted"></span>
+            <div>
+                <button id="prevPage" class="btn btn-sm btn-outline-secondary">Prev</button>
+                <button id="nextPage" class="btn btn-sm btn-outline-secondary">Next</button>
+            </div>
+        </div>
     </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const table = document.getElementById("customerTable");
+    const rows = table.querySelectorAll("tbody tr");
+    const searchInput = document.getElementById("searchInput");
+    const rowsPerPageSelect = document.getElementById("rowsPerPage");
+    const prevBtn = document.getElementById("prevPage");
+    const nextBtn = document.getElementById("nextPage");
+    const pageInfo = document.getElementById("pageInfo");
+
+    let currentPage = 1;
+    let rowsPerPage = parseInt(rowsPerPageSelect.value);
+
+    function renderTable() {
+        const searchTerm = searchInput.value.toLowerCase();
+        let filteredRows = Array.from(rows).filter(row =>
+            row.innerText.toLowerCase().includes(searchTerm)
+        );
+
+        let totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+        if (currentPage > totalPages) currentPage = totalPages || 1;
+
+        filteredRows.forEach((row, i) => {
+            row.style.display = (i >= (currentPage - 1) * rowsPerPage && i < currentPage * rowsPerPage)
+                ? "" : "none";
+        });
+
+        pageInfo.textContent = `Page ${currentPage} of ${totalPages || 1}`;
+        prevBtn.disabled = currentPage === 1;
+        nextBtn.disabled = currentPage === totalPages || totalPages === 0;
+    }
+
+    searchInput.addEventListener("keyup", function () {
+        currentPage = 1;
+        renderTable();
+    });
+
+    rowsPerPageSelect.addEventListener("change", function () {
+        rowsPerPage = parseInt(this.value);
+        currentPage = 1;
+        renderTable();
+    });
+
+    prevBtn.addEventListener("click", function () {
+        if (currentPage > 1) {
+            currentPage--;
+            renderTable();
+        }
+    });
+
+    nextBtn.addEventListener("click", function () {
+        currentPage++;
+        renderTable();
+    });
+
+    renderTable(); // Initial load
+});
+</script>
 {% endblock pageContent %}

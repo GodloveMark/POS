@@ -1,0 +1,29 @@
+{% extends 'posApp/base.html' %}
+{% block pageContent %}
+<h3>📦 Stock Overview</h3>
+
+<h5>Current Stock</h5>
+<table class="table table-bordered">
+  <tr><th>Name</th><th>Qty</th></tr>
+  {% for product in current_stock %}
+  <tr><td>{{ product.name }}</td><td>{{ product.quantity }}</td></tr>
+  {% empty %}<tr><td colspan="2">No stock.</td></tr>{% endfor %}
+</table>
+
+<h5>❌ Sold Out</h5>
+<table class="table table-bordered">
+  <tr><th>Name</th></tr>
+  {% for product in sold_out %}
+  <tr><td>{{ product.name }}</td></tr>
+  {% empty %}<tr><td colspan="1">None.</td></tr>{% endfor %}
+</table>
+
+<h5>🆕 New Stock</h5>
+<table class="table table-bordered">
+  <tr><th>Name</th><th>Date Added</th></tr>
+  {% for product in new_stock %}
+  <tr><td>{{ product.name }}</td><td>{{ product.date_added|date:"M d, Y" }}</td></tr>
+  {% empty %}<tr><td colspan="2">No new stock.</td></tr>{% endfor %}
+</table>
+
+{% endblock pageContent%}

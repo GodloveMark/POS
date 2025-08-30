@@ -1,0 +1,10 @@
+{% if request.user.role == 'admin' %}
+<div class="mb-3">
+    <label for="store" class="form-label">Assign Store</label>
+    <select name="store_id" class="form-select" required>
+        {% for store in stores %}
+            <option value="{{ store.id }}">{{ store.name }}</option>
+        {% endfor %}
+    </select>
+</div>
+{% endif %}

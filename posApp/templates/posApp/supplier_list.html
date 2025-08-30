@@ -1,4 +1,6 @@
-{% extends "posApp/base.html" %} {% load humanize %} {% block pageContent %}
+{% extends "posApp/base.html" %}
+{% load humanize %}
+{% block pageContent %}
 <div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
     <div class="mdc-card py-2">
         <div class="d-flex justify-content-between align-items-center">
@@ -7,40 +9,105 @@
         </div>
     </div>
 </div>
+
 <div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
-    <div class="mdc-card">
-        <div class="table-responsive">
-            <table class="table table-striped table-bordered">
-                <colgroup>
-                    <col width="5%">
-                    <col width="35%">
-                    <col width="30%">
-                    <col width="30%">
-                </colgroup>
-                <thead>
-                    <tr>
-                        <th class="text-center py-1">#</th>
-                        <th class="text-center py-1">Name</th>
-                        <th class="text-center py-1">Contact Person</th>
-                        <th class="text-center py-1">Phone</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in suppliers %}
-                    <tr>
-                        <td class="px-2 py-1 text-center">{{ forloop.counter }}</td>
-                        <td class="px-2 py-1 text-start">{{ s.name }}</td>
-                        <td class="px-2 py-1 text-start">{{ s.contact_person|default:"—" }}</td>
-                        <td class="px-2 py-1 text-start">{{ s.phone|default:"—" }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="4" class="text-center text-muted">No suppliers found.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+  <div class="mdc-card p-3">
+    <!-- Search bar -->
+    <div class="mb-3 d-flex justify-content-between">
+      <input type="text" id="searchInput" class="form-control w-50" placeholder="Search suppliers...">
     </div>
+
+    <div class="table-responsive">
+      <table class="table table-striped table-bordered" id="supplierTable">
+        <colgroup>
+          <col width="5%">
+          <col width="35%">
+          <col width="30%">
+          <col width="30%">
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="text-center py-1">#</th>
+            <th class="text-center py-1">Name</th>
+            <th class="text-center py-1">Contact Person</th>
+            <th class="text-center py-1">Phone</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in suppliers %}
+          <tr>
+            <td class="px-2 py-1 text-center">{{ forloop.counter }}</td>
+            <td class="px-2 py-1">{{ s.name }}</td>
+            <td class="px-2 py-1">{{ s.contact_person|default:"—" }}</td>
+            <td class="px-2 py-1">{{ s.phone|default:"—" }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" class="text-center text-muted">No suppliers found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination controls -->
+    <nav>
+      <ul class="pagination justify-content-center" id="pagination"></ul>
+    </nav>
+  </div>
 </div>
+
+<!-- JS for search + pagination -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const rowsPerPage = 5;
+  const table = document.getElementById("supplierTable");
+  const tbody = table.querySelector("tbody");
+  const rows = Array.from(tbody.querySelectorAll("tr"));
+  const pagination = document.getElementById("pagination");
+  const searchInput = document.getElementById("searchInput");
+  
+  let filteredRows = rows.slice();
+  let currentPage = 1;
+
+  function renderTable() {
+    // Hide all
+    rows.forEach(r => r.style.display = "none");
+
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    filteredRows.slice(start, end).forEach(r => r.style.display = "");
+
+    renderPagination();
+  }
+
+  function renderPagination() {
+    pagination.innerHTML = "";
+    const pageCount = Math.ceil(filteredRows.length / rowsPerPage);
+    if (pageCount <= 1) return;
+
+    for (let i = 1; i <= pageCount; i++) {
+      const li = document.createElement("li");
+      li.className = `page-item ${i === currentPage ? "active" : ""}`;
+      li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+      li.addEventListener("click", (e) => {
+        e.preventDefault();
+        currentPage = i;
+        renderTable();
+      });
+      pagination.appendChild(li);
+    }
+  }
+
+  // Search filter
+  searchInput.addEventListener("input", function() {
+    const q = this.value.toLowerCase();
+    filteredRows = rows.filter(row => row.textContent.toLowerCase().includes(q));
+    currentPage = 1;
+    renderTable();
+  });
+
+  renderTable();
+});
+</script>
 {% endblock pageContent %}

@@ -1,0 +1,54 @@
+{% extends "posApp/base.html" %} {% block pageContent %}
+
+<body class="container mt-5">
+    <h2>Cashier POS</h2>
+    <form method="POST" action="{% url 'save_pos' %}">
+        {% csrf_token %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Product</th><th>Qty</th><th>Price</th><th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in product %}
+                <tr>
+                    <td>
+                        <input type="hidden" name="product_id[]" value="{{ product.id }}">
+                        {{ product.name }}
+                    </td>
+                    <td><input type="number" name="qty[]" class="form-control qty" value="1" oninput="updateTotal(this.closest('tr'))"></td>
+                    <td><input type="number" name="price[]" class="form-control price" value="{{ product.price }}" step="0.01" oninput="updateTotal(this.closest('tr'))"></td>
+                    <td><input type="text" class="form-control total" readonly value="{{ product.price }}"></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="row">
+            <div class="col-md-3">
+                <label>Tax (%)</label>
+                <input type="number" name="tax" id="tax" class="form-control" value="0" oninput="updateGrandTotal()">
+            </div>
+            <div class="col-md-3">
+                <label>Sub Total</label>
+                <input type="text" name="sub_total" id="sub_total" class="form-control" readonly>
+            </div>
+            <div class="col-md-3">
+                <label>Tax Amount</label>
+                <input type="text" name="tax_amount" id="tax_amount" class="form-control" readonly>
+            </div>
+            <div class="col-md-3">
+                <label>Grand Total</label>
+                <input type="text" name="grand_total" id="grand_total" class="form-control" readonly>
+            </div>
+        </div>
+        <div class="mt-3">
+            <label>Tendered Amount</label>
+            <input type="number" name="tendered_amount" class="form-control">
+            <label>Change</label>
+            <input type="text" name="amount_change" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-primary mt-3">Complete Sale</button>
+    </form>
+</body>
+{% endblock pageContent %}

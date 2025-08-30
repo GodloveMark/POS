@@ -1,0 +1,107 @@
+{% load static %}
+<aside class="mdc-drawer mdc-drawer--dismissible mdc-drawer--open bg-dark bg-gradient">
+    <div class="mdc-drawer__header border-bottom border-light">
+        <a href="{% url 'home-page' %}" class="brand-logo">
+            <h3 class="text-center text-light">{{ user.owned_stores.first.name }}</h3>
+            <h5 class="text-center text-light"> POS </h5>
+        </a>
+    </div>
+    <div class="mdc-drawer__content">
+        <a href="{% url 'add_expenditure' %}" class="btn btn-outline-primary mb-3">+ Add Expenditure</a>
+
+        <div class="mdc-list-group">
+            <nav class="mdc-list mdc-drawer-menu">
+
+                <div class="mdc-list-item mdc-drawer-item">
+                    <a class="mdc-drawer-link" href="{% url 'home-page' %}">
+                        <i class="material-icons mdc-list-item__start-detail">home</i> Home
+                    </a>
+                </div>
+
+                <div class="mdc-list-item mdc-drawer-item">
+                    <a class="mdc-drawer-link" href="{% url 'category-page' %}">
+                        <i class="material-icons mdc-list-item__start-detail">list</i> Category List
+                    </a>
+                </div>
+
+                <div class="mdc-list-item mdc-drawer-item">
+                    <a class="mdc-drawer-link" href="{% url 'product-page' %}">
+                        <i class="material-icons mdc-list-item__start-detail">label</i> Product List
+                    </a>
+                </div>
+
+                <div class="mdc-list-item mdc-drawer-item">
+                    <a class="mdc-drawer-link" href="{% url 'stock_entry_list' %}">
+                        <i class="material-icons mdc-list-item__start-detail">inventory</i> Manage Stock
+                    </a>
+                </div>
+
+                <div class="mdc-list-item mdc-drawer-item">
+                    <a class="mdc-drawer-link" href="{% url 'pos-page' %}">
+                        <i class="material-icons mdc-list-item__start-detail">payment</i> POS
+                    </a>
+                </div>
+
+                <div class="mdc-list-item mdc-drawer-item">
+                    <a class="mdc-drawer-link" href="{% url 'sales-page' %}">
+                        <i class="material-icons mdc-list-item__start-detail">receipt</i> Sales
+                    </a>
+                </div>
+
+
+                <div class="mdc-list-item mdc-drawer-item">
+                    <a class="mdc-drawer-link" href="{% url 'credit-sales' %}">
+                        <i class="material-icons mdc-list-item__start-detail">credit_card</i> Credit Sales
+                    </a>
+                </div>
+
+                
+              <!--  <div class="mdc-list-item mdc-drawer-item">
+                    <a class="mdc-drawer-link" href="{% url 'sales-report' %}">
+                        <i class="material-icons mdc-list-item__start-detail">analytics</i> Reports
+                    </a>
+                </div>-->
+
+                <div class="mdc-list-item mdc-drawer-item">
+                    <a class="mdc-drawer-link" href="{% url 'expenditure_list' %}">
+                        <i class="material-icons mdc-list-item__start-detail">money_off</i> Expenditures
+                    </a>
+                </div>
+
+                <div class="mdc-list-item mdc-drawer-item">
+                    <a class="mdc-drawer-link" href="{% url 'stock_entry_list' %}">
+                        <i class="material-icons mdc-list-item__start-detail">add_box</i> Add Stock Entry
+                    </a>
+                </div>
+
+                <div class="mdc-list-item mdc-drawer-item">
+                    <a class="mdc-drawer-link" href="{% url 'customer-list' %}">
+                        <i class="material-icons mdc-list-item__start-detail">people</i> Customers
+                    </a>
+                </div>
+
+                <div class="mdc-list-item mdc-drawer-item">
+                    <a class="mdc-drawer-link" href="{% url 'supplier-list' %}">
+                        <i class="material-icons mdc-list-item__start-detail">local_shipping</i> Suppliers
+                    </a>
+                </div>
+
+                <div class="mdc-list-item mdc-drawer-item">
+                  <a class="mdc-drawer-link" href="{% url 'credit-sales-report' %}">
+                    <i class="material-icons mdc-list-item__start-detail">assignment</i> Credit Sales Report
+                  </a>
+                </div>
+
+
+                <div class="mdc-list-item mdc-drawer-item">
+                    <a class="mdc-drawer-link" href="{% url 'sales-report' %}">
+                        <i class="material-icons mdc-list-item__start-detail">assessment </i> Business Report
+                    </a>
+                </div>
+
+
+
+            </nav>
+        </div>
+    </div>
+</aside>

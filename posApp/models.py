@@ -77,6 +77,12 @@ class Category(models.Model):
     def __str__(self):
         return self.name
 
+class Unit(models.Model):
+    name = models.CharField(max_length=50, unique=True)   # e.g. Kilogram, Gram, Liter, Piece
+    short_name = models.CharField(max_length=10)  # e.g. "kg", "g", "L", "tab"
+
+    def __str__(self):
+        return f"{self.name} ({self.short_name})"        
 
 class Product(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
@@ -86,9 +92,10 @@ class Product(models.Model):
     description = models.TextField(null=True, blank=True)
     expiry_date = models.DateField(null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2) # Selling price
-    quantity = models.IntegerField(default=0)
-    cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)  # New field
-    low_stock_threshold = models.PositiveIntegerField(default=10)
+    quantity = models.DecimalField(max_digits=12, decimal_places=3, default=0)  # 🔄 allow fractional qty
+    unit = models.ForeignKey(Unit, on_delete=models.SET_NULL, null=True, blank=True)  # 🔑 NEW
+    cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    low_stock_threshold = models.DecimalField(max_digits=12, decimal_places=3, default=10)
     status = models.IntegerField(default=1)
     date_added = models.DateTimeField(default=timezone.now)
     date_updated = models.DateTimeField(auto_now=True)
@@ -100,10 +107,11 @@ class Product(models.Model):
         ).aggregate(total=Sum('remaining_quantity'))['total'] or 0
 
     def is_low_stock(self):
-        return self.stock <= self.low_stock_threshold
+        return self.quantity <= self.low_stock_threshold
 
     def __str__(self):
-        return f"{self.code} - {self.name}"
+        return f"{self.code} - {self.name} ({self.unit.abbreviation if self.unit else ''})"
+
 
 from django.db.models import F
 import uuid
@@ -149,7 +157,7 @@ class SalesItem(models.Model):
     sale = models.ForeignKey(Sales, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
     price = models.FloatField(default=0)
-    qty = models.FloatField(default=0)
+    qty = models.DecimalField(max_digits=12, decimal_places=3, default=0)
     total = models.FloatField(default=0)
 
     def __str__(self):

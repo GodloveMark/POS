@@ -1,0 +1,86 @@
+<!-- templates/expenditures/report.html -->
+{% extends 'posApp/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block content %}
+<h3>Expenditure Report</h3> 
+ <a href="{% url 'add-expenditure' %}" class="btn btn-outline-primary mb-3">+ Add Expenditure</a>
+
+
+<form method="get" class="row g-3 mb-3">
+  <div class="col-md-3">
+    <label for="type">Type</label>
+    <input type="text" class="form-control" name="type" value="{{ request.GET.type }}">
+  </div>
+  <div class="col-md-3">
+    <label for="start_date">From</label>
+    <input type="date" class="form-control" name="start_date" value="{{ request.GET.start_date }}">
+  </div>
+  <div class="col-md-3">
+    <label for="end_date">To</label>
+    <input type="date" class="form-control" name="end_date" value="{{ request.GET.end_date }}">
+  </div>
+  <div class="col-md-3 d-flex align-items-end">
+    <button type="submit" class="btn btn-primary">Filter</button>
+  </div>
+</form>
+
+<h5>Total Spent: {{ total_spent|intcomma }}</h5>
+
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Type</th>
+      <th>Amount</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for exp in expenditures %}
+    <tr>
+      <td>{{ exp.date }}</td>
+      <td>{{ exp.type }}</td>
+      <td>{{ exp.amount|intcomma }}</td>
+      <td>{{ exp.description }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<canvas id="expenseChart" height="100"></canvas>
+{% endblock %}
+
+{% block script %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ctx = document.getElementById('expenseChart').getContext('2d');
+const chartData = {{ chart_data|safe }};
+const labels = chartData.map(item => item.date);
+const data = chartData.map(item => item.total);
+
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: labels,
+        datasets: [{
+            label: 'Expenditures Over Time',
+            data: data,
+            borderColor: 'rgba(255, 99, 132, 1)',
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            fill: true,
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

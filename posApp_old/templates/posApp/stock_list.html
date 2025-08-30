@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block pageContent %}
+<h2>Stock Overview</h2>
+
+<h4>🟢 Current Stock</h4>
+<table class="table table-striped">
+    <thead>
+        <tr><th>Name</th><th>Quantity</th></tr>
+    </thead>
+    <tbody>
+        {% for product in current_stock %}
+        <tr>
+            <td>{{ product.name }}</td>
+            <td>{{ product.quantity }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="2">No current stock available.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h4>🔴 Sold Out Products</h4>
+<table class="table table-striped">
+    <thead>
+        <tr><th>Name</th></tr>
+    </thead>
+    <tbody>
+        {% for product in sold_out %}
+        <tr>
+            <td>{{ product.name }}</td>
+        </tr>
+        {% empty %}
+        <tr><td>No sold-out products.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h4>🆕 New Stock (Last 7 Days)</h4>
+<table class="table table-striped">
+    <thead>
+        <tr><th>Name</th><th>Date Added</th></tr>
+    </thead>
+    <tbody>
+        {% for product in new_stock %}
+        <tr>
+            <td>{{ product.name }}</td>
+            <td>{{ product.date_added|date:"M d, Y" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="2">No new stock added recently.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock pageContent %}

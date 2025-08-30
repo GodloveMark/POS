@@ -1,0 +1,29 @@
+{% extends "posApp/base.html" %} {% block pageContent %}
+
+<body class="container mt-5">
+    <h2>Register New Cashier</h2>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-info">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="POST" action="{% url 'register_user' %}">
+        {% csrf_token %}
+        <input type="hidden" name="role" value="cashier">
+        <div class="mb-3">
+            <label for="username" class="form-label">Cashier Username</label>
+            <input type="text" class="form-control" name="username" required>
+        </div>
+        <div class="mb-3">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" class="form-control" name="password" required>
+        </div>
+        <button type="submit" class="btn btn-success">Create Cashier</button>
+    </form>
+
+    <hr>
+    <a href="{% url 'manager_dashboard' %}" class="btn btn-secondary mt-2">Back to Dashboard</a>
+</body>
+{% endblock pageContent %}

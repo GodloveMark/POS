@@ -20,7 +20,7 @@
   {% for product in products %}
     <option value="{{ product.id }}" 
             data-stock="{{ product.total_remaining_quantity|default:0 }}">
-      {{ product.name }} - {{ product.price }} (Stock: {{ product.total_remaining_quantity|default:0 }})
+      {{ product.name }} ({{ product.unit.name }}) - {{ product.price }} (Stock: {{ product.total_remaining_quantity|default:0 }})
     </option>
   {% endfor %}
 </select>
@@ -118,6 +118,7 @@
             <input type="number" name="qty[]" min="0" class="form-control form-control-sm rounded-0 text-center">
         </td>
         <td class="px-2 py-1 product_name text-start"></td>
+        <td class="px-2 py-1 product_unit text-start"></td>
         <td class="px-2 py-1 product_price text-end"></td>
         <td class="px-2 py-1 product_total text-end"></td>
     </tr>
@@ -141,13 +142,22 @@
         var sub_total = 0;
         var grand_total = 0;
         $('#POS-field table tbody tr').each(function() {
-            price = $(this).find('[name="price[]"]').val()
-            qty = $(this).find('[name="qty[]"]').val()
-            qty = qty > 0 ? qty : 0
-            total = parseFloat(price) * parseFloat(qty)
-            $(this).find('.product_total').text(parseFloat(total).toLocaleString('en-US'))
-            sub_total += parseFloat(total)
-        })
+          price = $(this).find('[name="price[]"]').val()
+          qtyInput = $(this).find('[name="qty[]"]')
+          qty = parseFloat(qtyInput.val()) || 0
+          maxStock = parseFloat($(this).attr('data-max-stock')) || 0
+
+                if (qty > maxStock) {
+              alert(`Only ${maxStock} left in stock.`);
+              qty = maxStock
+              qtyInput.val(maxStock)
+          }
+
+                total = parseFloat(price) * qty
+          $(this).find('.product_total').text(total.toLocaleString('en-US'))
+          sub_total += total
+})      
+
         tax = $('[name="tax"]').val()
         tax = tax / 100;
         var tax_amount = parseFloat(sub_total) * parseFloat(tax);
@@ -194,6 +204,7 @@ $('#add_item').click(function () {
         tr.find('[name="product_id[]"]').val(id);
         tr.find('[name="price[]"]').val(data.price);
         tr.find('.product_name').text(data.name);
+        tr.find('.product_unit').text(data.unit_name);
         tr.find('.product_price').text(parseFloat(data.price).toLocaleString('en-US'));
         tr.find('.product_total').text(parseFloat(data.price * qty).toLocaleString('en-US'));
 

@@ -9,11 +9,25 @@
     </div>
   </div>
 </div>
-
+ 
 <div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
-  <div class="mdc-card">
+  <div class="mdc-card p-3">
+
+    <!-- 🔍 Search Bar -->
+    <div class="mb-3 d-flex justify-content-between">
+      <input type="text" id="searchInput" class="form-control me-2" placeholder="Search by customer, date, or amount...">
+      <select id="rowsPerPage" class="form-select w-auto">
+        <option value="5">5 rows</option>
+        <option value="10" selected>10 rows</option>
+        <option value="20">20 rows</option>
+        <option value="50">50 rows</option>
+      </select>
+    </div>
+
+ 
+    <!-- 📊 Table -->
     <div class="table-responsive">
-      <table class="table table-striped table-bordered">
+      <table id="creditSalesTable" class="table table-striped table-bordered">
         <colgroup>
           <col width="5%">
           <col width="25%">
@@ -41,7 +55,9 @@
             <td class="px-2 py-1 text-start">{{ s.customer.name }}</td>
             <td class="px-2 py-1 text-end">Tsh {{ s.grand_total|floatformat:2 }}</td>
             <td class="px-2 py-1 text-end">Tsh {{ s.tendered_amount|floatformat:2 }}</td>
-            <td class="px-2 py-1 text-end text-danger">Tsh {{ s.grand_total|floatformat:2|add:"-`"|add:s.tendered_amount }}</td>
+            <td class="px-2 py-1 text-end text-danger">
+              Tsh {{ s.grand_total|floatformat:2|add:"-`"|add:s.tendered_amount }}
+            </td>
             <td class="px-2 py-1 text-center">{{ s.due_date|date:"Y-m-d" }}</td>
             <td class="px-2 py-1 text-center">{{ s.date_added|date:"Y-m-d" }}</td>
           </tr>
@@ -53,6 +69,87 @@
         </tbody>
       </table>
     </div>
+
+    <!-- 📌 Pagination Controls -->
+    <div class="d-flex justify-content-between align-items-center mt-3">
+      <div id="tableInfo" class="text-muted"></div>
+      <nav>
+        <ul class="pagination pagination-sm mb-0" id="pagination"></ul>
+      </nav>
+    </div>
+
   </div>
 </div>
+
+<!-- ✅ Frontend Search + Pagination Script -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const table = document.getElementById("creditSalesTable");
+  const tbody = table.querySelector("tbody");
+  const rows = Array.from(tbody.querySelectorAll("tr"));
+  const searchInput = document.getElementById("searchInput");
+  const rowsPerPageSelect = document.getElementById("rowsPerPage");
+  const pagination = document.getElementById("pagination");
+  const tableInfo = document.getElementById("tableInfo");
+
+  let currentPage = 1;
+  let rowsPerPage = parseInt(rowsPerPageSelect.value);
+
+  function renderTable() {
+    const searchTerm = searchInput.value.toLowerCase();
+    const filteredRows = rows.filter(row => row.innerText.toLowerCase().includes(searchTerm));
+
+    const totalRows = filteredRows.length;
+    const totalPages = Math.ceil(totalRows / rowsPerPage);
+
+    // Slice rows for current page
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    const paginatedRows = filteredRows.slice(start, end);
+
+    // Clear table
+    tbody.innerHTML = "";
+    paginatedRows.forEach((row, index) => {
+      row.querySelector("td").innerText = start + index + 1; // re-number #
+      tbody.appendChild(row);
+    });
+
+    // Update info
+    tableInfo.innerText = `Showing ${start + 1} to ${Math.min(end, totalRows)} of ${totalRows} entries`;
+
+    // Render pagination
+    pagination.innerHTML = "";
+    for (let i = 1; i <= totalPages; i++) {
+      const li = document.createElement("li");
+      li.className = "page-item " + (i === currentPage ? "active" : "");
+      const a = document.createElement("a");
+      a.className = "page-link";
+      a.href = "#";
+      a.innerText = i;
+      a.addEventListener("click", function (e) {
+        e.preventDefault();
+        currentPage = i;
+        renderTable();
+      });
+      li.appendChild(a);
+      pagination.appendChild(li);
+    }
+  }
+
+  // Events
+  searchInput.addEventListener("input", function () {
+    currentPage = 1;
+    renderTable();
+  });
+
+  rowsPerPageSelect.addEventListener("change", function () {
+    rowsPerPage = parseInt(this.value);
+    currentPage = 1;
+    renderTable();
+  });
+
+  // Initial render
+  renderTable();
+});
+</script>
 {% endblock pageContent %}
