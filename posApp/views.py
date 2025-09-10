@@ -21,7 +21,7 @@ from django.db.models import Sum, F, ExpressionWrapper, DecimalField
 from django.views.decorators.http import require_POST
 from django.db import models
 from decimal import Decimal
- 
+
 
 
 
@@ -82,7 +82,7 @@ def login_user(request):
                 resp['role'] = user.role
                 resp['username'] = user.username
 
-                
+
                 if user.role == 'admin':
                     resp['redirect_url'] = '/system-admin/dashboard/'
 
@@ -130,7 +130,7 @@ def home(request):
         date_added__month=current_month,
         date_added__day=current_day
 )
-   
+
     transaction = today_sales_qs.count()
     today_sales = Sales.objects.filter(
         date_added__year=current_year,
@@ -160,7 +160,7 @@ def about(request):
 @login_required
 def category(request):
     stores = Store.objects.filter(owner=request.user)
-    
+
     category_list = Category.objects.filter(store__in=stores)
     # category_list = {}
     context = {
@@ -172,7 +172,7 @@ def category(request):
 @login_required
 def manage_category(request):
     category = {}
-    
+
     # Show all stores for admin, or only the assigned one for managers
    # if request.user.role == 'admin':
    #     stores = Store.objects.all()
@@ -185,7 +185,7 @@ def manage_category(request):
         id = request.GET.get('id', '')
         if id.isnumeric() and int(id) > 0:
             category = Category.objects.filter(id=id).first()
-    
+
     context = {
         'category': category,
         'stores': stores,
@@ -262,7 +262,7 @@ def product_list_view(request):
         'products': product_list,
         'low_stock_products': low_stock_products,
     }
-    return render(request, 'posApp/Products.html', context)
+    return render(request, 'posApp/products.html', context)
 
 @login_required
 def manage_Product(request):
@@ -277,7 +277,7 @@ def manage_Product(request):
             id= data['id']
         if id.isnumeric() and int(id) > 0:
             product = Product.objects.filter(id=id).first()
-    
+
     context = {
         'product' : product,
         'categories' : categories,
@@ -569,7 +569,7 @@ def save_pos(request):
             sub_total += price * qty
 
         # Compute tax
-        tax = Decimal('0.18')  # 18% VAT  
+        tax = Decimal('0.18')  # 18% VAT
         tax_amount = sub_total * tax
         grand_total = sub_total + tax_amount
 
@@ -661,7 +661,7 @@ def save_pos(request):
 #    except Exception as e:
 #        return JsonResponse({'status': 'failed', 'msg': str(e)})
 
-    
+
 
 @login_required
 def salesList(request):
@@ -751,7 +751,7 @@ User = get_user_model()
 #        return JsonResponse({"status": "success", "msg": f"{role.capitalize()} account created."})
 #    except Exception as e:
 #        return JsonResponse({"status": "failed", "msg": str(e)})
-    
+
 from .models import Store, StoreUser, CustomUser
 from django.contrib.auth.hashers import make_password
 
@@ -787,7 +787,7 @@ def register_user(request):
 
     # GET request
     stores = Store.objects.all() if request.user.role == 'admin' else None
-    return render(request, 'register_user.html', {'stores': stores})
+    return render(request, 'posApp/register_user.html', {'stores': stores})
 
 
 
@@ -828,27 +828,27 @@ def manager_dashboard(request):
     except StoreUser.DoesNotExist:
         cashiers = []
 
-    return render(request, 'manager_dashboard.html', {'cashiers': cashiers})
+    return render(request, 'posApp/manager_dashboard.html', {'cashiers': cashiers})
 
 @login_required
 def register_cashier_page(request):
     if request.user.role != 'manager':
         return redirect('login_user')
-    return render(request, 'register_cashier.html')
+    return render(request, 'posApp/register_cashier.html')
 
 @login_required
 def cashier_pos(request):
     if request.user.role != 'cashier':
         return redirect('login_user')
     Product = Product.objects.filter(status=1)
-    return render(request, 'cashier_pos.html', {'Product': Product})
+    return render(request, 'posApp/cashier_pos.html', {'Product': Product})
 
 @login_required
 def sales_history(request):
     if request.user.role not in ['cashier', 'manager']:
         return redirect('login_user')
     sales = Sales.objects.order_by('-date_added')[:50]  # limit recent
-    return render(request, 'sales_history.html', {'sales': sales})
+    return render(request, 'posApp/sales_history.html', {'sales': sales})
 
 
 #@login_required
@@ -902,7 +902,7 @@ def user_list(request):
         return redirect('login_user')
 
     users = CustomUser.objects.exclude(role='admin')
-    return render(request, 'user_list.html', {'users': users})
+    return render(request, 'posApp/user_list.html', {'users': users})
 
 
 from django.shortcuts import get_object_or_404
@@ -932,7 +932,7 @@ def edit_user(request, user_id):
         if store_id:
             store = Store.objects.get(id=store_id)
             StoreUser.objects.update_or_create(user=user, defaults={'store': store})
-        
+
         messages.success(request, f"User '{user.username}' updated successfully.")
         return redirect('user_list')
 
@@ -942,7 +942,7 @@ def edit_user(request, user_id):
     except StoreUser.DoesNotExist:
         assigned_store = None
 
-    return render(request, 'edit_user.html', {
+    return render(request, 'posApp/edit_user.html', {
         'user_obj': user,
         'stores': stores,
         'assigned_store': assigned_store,
@@ -1076,7 +1076,7 @@ import calendar
 
 from .models import Expenditure
 from .forms import ExpenditureForm
-    
+
 
 def expenditure_list(request):
 
@@ -1088,7 +1088,7 @@ def expenditure_list(request):
         'total_expense': total_expense,
     })
 
-def add_expenditure(request): 
+def add_expenditure(request):
     store = Store.objects.filter(owner=request.user).first()
     if request.method == 'POST':
         form = ExpenditureForm(request.POST)
@@ -1352,7 +1352,7 @@ def get_current_stock(product):
 
 
 @login_required
-def credit_sales(request): 
+def credit_sales(request):
     store = Store.objects.filter(owner=request.user).first()
     products = Product.objects.filter(store=store)
     customers = Customer.objects.filter(store=store)
