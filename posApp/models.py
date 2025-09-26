@@ -76,13 +76,19 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
-
+ 
 class Unit(models.Model):
-    name = models.CharField(max_length=50, unique=True)   # e.g. Kilogram, Gram, Liter, Piece
-    short_name = models.CharField(max_length=10)  # e.g. "kg", "g", "L", "tab"
+    store = models.ForeignKey("Store", on_delete=models.CASCADE, related_name="units")
+    name = models.CharField(max_length=50, unique=False)   # Kilogram, Gram, Liter
+    short_name = models.CharField(max_length=10)           # "kg", "g", "L"
+    status = models.IntegerField(default=1)                # 1=Active, 0=Inactive
+
+    class Meta:
+        unique_together = ('store', 'name')  # Prevent duplicates per store
 
     def __str__(self):
-        return f"{self.name} ({self.short_name})"        
+        return f"{self.name} ({self.short_name})"
+      
 
 class Product(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)

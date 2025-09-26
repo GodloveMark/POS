@@ -50,7 +50,12 @@ urlpatterns = [
     path('report/', views.report_view, name='sales-report'),
     path('expenditure/delete/<int:pk>/', views.delete_expenditure, name='delete_expenditure'),
     path('credit-sales/', views.credit_sales, name='credit-sales'),
-    path('credit-sales/report/', views.credit_sales_report, name='credit-sales-report')
+    path('credit-sales/report/', views.credit_sales_report, name='credit-sales-report'),
+
+    path('units/', views.unit_page, name="unit-page"),
+    path('manage_unit/', views.manage_unit, name="manage_unit-page"),
+    path('save_unit/', views.save_unit, name="save-unit-page"),
+    path('delete_unit/', views.delete_unit, name="delete-unit"),
 
 
 

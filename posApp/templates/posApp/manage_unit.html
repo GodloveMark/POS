@@ -1,0 +1,84 @@
+<div class="container-fluid">
+<form action="" id="unit-form">
+    <input type="hidden" name="id" value="{% if unit.pk %}{{ unit.pk }}{% else %}0{% endif %}">
+
+    <div class="form-group mb-3">
+        <label for="name" class="control-label">Unit Name</label>
+        <input type="text" name="name" id="name" class="form-control form-control-sm rounded-0"
+               value="{% if unit.name %}{{ unit.name }}{% endif %}" required>
+    </div>
+
+    <div class="form-group mb-3">
+        <label for="short_name" class="control-label">Short Name</label>
+        <input type="text" name="short_name" id="short_name" class="form-control form-control-sm rounded-0"
+               value="{% if unit.short_name %}{{ unit.short_name }}{% endif %}" required>
+    </div>
+
+    <div class="form-group mb-3">
+        <label for="status" class="control-label">Status</label>
+        <select name="status" id="status" class="form-select form-select-sm rounded-0" required>
+            <option value="1" {% if unit.status == 1 %}selected{% endif %}>Active</option>
+            <option value="0" {% if unit.status == 0 %}selected{% endif %}>Inactive</option>
+        </select>
+    </div>
+
+    <div class="form-group mb-3">
+        <label for="store_id" class="control-label">Store</label>
+        <select name="store_id" id="store_id" class="form-select form-select-sm rounded-0" required>
+            {% for store in stores %}
+                <option value="{{ store.id }}"
+                    {% if unit.store.id == store.id %}selected{% endif %}>
+                    {{ store.name }}
+                </option>
+            {% empty %}
+                <option disabled selected>No stores available</option>
+            {% endfor %}
+        </select>
+    </div>
+</form>
+</div>
+
+<script>
+    $(function() {
+        $('#unit-form').submit(function(e) {
+            e.preventDefault();
+            var _this = $(this);
+            $('.err-msg').remove();
+            var el = $('<div>').addClass("alert alert-danger err-msg").hide();
+
+            if (_this[0].checkValidity() == false) {
+                _this[0].reportValidity();
+                return false;
+            }
+
+            start_loader();
+            $.ajax({
+                headers: { "X-CSRFToken": '{{csrf_token}}' },
+                url: "{% url 'save-unit-page' %}",
+                data: new FormData($(this)[0]),
+                cache: false,
+                contentType: false,
+                processData: false,
+                method: 'POST',
+                type: 'POST',
+                dataType: 'json',
+                error: err => {
+                    console.log(err);
+                    alert_toast("An error occured", 'error');
+                    end_loader();
+                },
+                success: function(resp) {
+                    if (resp.status === 'success') {
+                        location.reload();
+                    } else {
+                        el.text(resp.msg || "An error occured");
+                        _this.prepend(el);
+                        el.show('slow');
+                        $("html, body, .modal").scrollTop(0);
+                        end_loader();
+                    }
+                }
+            })
+        })
+    })
+</script>

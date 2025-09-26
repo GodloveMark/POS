@@ -243,6 +243,82 @@ def delete_category(request):
         resp['status'] = 'failed'
     return HttpResponse(json.dumps(resp), content_type="application/json")
 
+
+@login_required
+def unit_list(request):
+    units = Unit.objects.filter(store=request.user.store)
+    
+    if request.method == "POST":
+        form = UnitForm(request.POST)
+        if form.is_valid():
+            unit = form.save(commit=False)
+            unit.store = request.user.store
+            unit.save()
+            return redirect("unit_list")
+    else:
+        form = UnitForm()
+    
+    return render(request, "posApp/unit_list.html", {"units": units, "form": form})
+
+    from django.shortcuts import render, get_object_or_404
+from django.http import JsonResponse
+from .models import Unit, Store
+
+def unit_page(request):
+    """List all units (filtered by store if user is store-specific)"""
+    if request.user.is_superuser:
+        units = Unit.objects.select_related("store").all()
+    else:
+        # Example: if user has a store relation (adjust as per your auth model)
+        units = Unit.objects.filter(store=request.user.store)
+    return render(request, "posApp/unit.html", {"units": units})
+
+
+def manage_unit(request):
+    """Modal form for create/edit"""
+    unit = None
+    if request.GET.get("id"):
+        unit = get_object_or_404(Unit, pk=request.GET["id"])
+
+    stores = Store.objects.all()
+    return render(request, "posApp/manage_unit.html", {"unit": unit, "stores": stores})
+
+
+def save_unit(request):
+    """Save new or edit existing"""
+    data = request.POST
+    unit_id = data.get("id")
+
+    if unit_id and unit_id != "0":
+        unit = get_object_or_404(Unit, pk=unit_id)
+    else:
+        unit = Unit()
+
+    try:
+        store = Store.objects.get(pk=data.get("store_id"))
+        unit.store = store
+        unit.name = data.get("name")
+        unit.short_name = data.get("short_name")
+        unit.status = int(data.get("status"))
+        unit.save()
+        return JsonResponse({"status": "success"})
+    except Store.DoesNotExist:
+        return JsonResponse({"status": "failed", "msg": "Invalid store"})
+    except Exception as e:
+        return JsonResponse({"status": "failed", "msg": str(e)})
+
+
+def delete_unit(request):
+    """Delete a unit"""
+    try:
+        unit = get_object_or_404(Unit, pk=request.POST.get("id"))
+        unit.delete()
+        return JsonResponse({"status": "success"})
+    except Exception as e:
+        return JsonResponse({"status": "failed", "msg": str(e)})
+
+
+
 # Product
 @login_required
 def product_list_view(request):
@@ -274,7 +350,7 @@ def manage_Product(request):
         data =  request.GET
         id = ''
         if 'id' in data:
-            id= data['id']
+            id= data['id'] 
         if id.isnumeric() and int(id) > 0:
             product = Product.objects.filter(id=id).first()
 
