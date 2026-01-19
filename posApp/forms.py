@@ -122,11 +122,20 @@ class CreateCashierForm(forms.ModelForm):
         return cleaned_data
 
 
-
+from .models import CustomUser, Store
 class ChangeUserPasswordForm(forms.Form):
-    user = forms.ModelChoiceField(queryset=User.objects.exclude(role='cashier'), label="Select User")
+    user = forms.ModelChoiceField(queryset=CustomUser.objects.none(), label="Select User")
     new_password = forms.CharField(widget=forms.PasswordInput, label="New Password")
     confirm_password = forms.CharField(widget=forms.PasswordInput, label="Confirm Password")
+
+    def __init__(self, *args, **kwargs):
+        manager = kwargs.pop('manager')  # Pass the logged-in manager
+        super().__init__(*args, **kwargs)
+
+        # Users assigned to the manager's stores + the manager themselves
+        self.fields['user'].queryset = CustomUser.objects.filter(
+            stores__owner=manager
+        ).distinct() | CustomUser.objects.filter(id=manager.id)
 
     def clean(self):
         cleaned_data = super().clean()

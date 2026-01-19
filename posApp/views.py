@@ -1749,15 +1749,21 @@ def create_cashier(request):
 # ----------------- CHANGE USER PASSWORD -----------------
 @admin_manager_only
 def change_user_password(request):
+     # Only manager or admin can access
+    if request.user.role not in ['manager', 'admin']:
+        messages.error(request, "Access denied.")
+        return redirect('home-page')
+
     if request.method == "POST":
-        form = ChangeUserPasswordForm(request.POST)
+        form = ChangeUserPasswordForm(request.POST, manager=request.user)
         if form.is_valid():
             user = form.cleaned_data['user']
-            user.set_password(form.cleaned_data['new_password'])
+            new_password = form.cleaned_data['new_password']
+            user.set_password(new_password)
             user.save()
-            messages.success(request, f"Password for '{user.username}' changed successfully.")
-            return redirect('change-user-password')
+            messages.success(request, f"Password for {user.username} updated successfully.")
+            return redirect('change_user_password')
     else:
-        form = ChangeUserPasswordForm()
+        form = ChangeUserPasswordForm(manager=request.user)
 
     return render(request, 'posApp/change_user_password.html', {'form': form})
