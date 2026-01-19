@@ -18,7 +18,9 @@
 <select id="product-id" class="form-control">
   <option value="">Select product</option>
   {% for product in products %}
-    <option value="{{ product.id }}" 
+    <option value="{{ product.id }}"
+            data-price="{{ product.price }}"
+            data-unit="{{ product.unit.name }}"
             data-stock="{{ product.total_remaining_quantity|default:0 }}">
       {{ product.name }} ({{ product.unit.name }}) - {{ product.price }} (Stock: {{ product.total_remaining_quantity|default:0 }})
     </option>
@@ -37,8 +39,18 @@
                         </div>
                     </div>
                     <div class="col-lg-4 col-md-2 col-md-12">
+
                         <div class="form-group mb-3">
+
                             <button class="btn btn-light btn-sm bg-gradient border rounded-0 text-start" type="button" id="add_item"><i class="mdi mdi-plus"></i> Add Item</button>
+
+  <input class="form-check-input" type="checkbox" id="apply_tax">
+  <label class="form-check-label" for="apply_tax">
+    Apply Tax
+  </label>
+
+
+
                         </div>
                     </div>
 
@@ -71,30 +83,33 @@
                     <div class="col-4 bg-gradient bg-dark bg-opacity-50 border h-100">
                         <div class="col-12 py-4 px-2">
                             <dl>
-                                <dt class="h4 fw-bold text-light">Sub Total</dt>
-                                <dd class="text-end py-1 px-2 rounded-0 bg-light">
-                                    <input type="hidden" name="sub_total" value="0">
-                                    <span class="h3 fw-bold" id="sub_total">0.00</span>
-                                </dd>
-                                <dt class="h4 fw-bold text-light">Tax Inclusive (%)</dt>
-                                <dd>
-                                    <input type="number" class="form-control form-control-lg rounded-0 text-end" step="any" min="0" max="100" name="tax" value="0">
-                                </dd>
-                                <dt class="h4 fw-bold text-light">Tax Amount</dt>
-                                <dd class="text-end py-1 px-2 rounded-0 bg-light">
-                                    <input type="hidden" name="tax_amount" value="0">
-                                    <span class="h3 fw-bold" id="tax_amount">0.00</span>
-                                </dd>
-                                <dt class="h4 fw-bold text-light">Grand Total</dt>
-                                <dd class="text-end py-1 px-2 rounded-0 bg-light">
-                                    <input type="hidden" name="grand_total" value="0">
-                                    <input type="hidden" name="tendered_amount" value="0">
-                                    <input type="hidden" name="amount_change" value="0">
-                                    <input type="hidden" name="grand_total" value="0">
-                                    <input type="hidden" name="grand_total" value="0">
-                                    <span class="h3 fw-bold" id="grand_total">0.00</span>
-                                </dd>
+                              <dt class="h4 fw-bold text-light">Sub Total</dt>
+                              <dd class="text-end py-1 px-2 rounded-0 bg-light">
+                                <input type="hidden" name="sub_total" value="0">
+                                <span class="h3 fw-bold" id="sub_total">0.00</span>
+                              </dd>
+
+                              <dt class="h4 fw-bold text-light">Tax Inclusive (%)</dt>
+                              <dd>
+                                <input type="number" class="form-control form-control-lg rounded-0 text-end"
+                                       step="any" min="0" max="100" name="tax" value="0">
+                              </dd>
+
+                              <dt class="h4 fw-bold text-light">Tax Amount</dt>
+                              <dd class="text-end py-1 px-2 rounded-0 bg-light">
+                                <input type="hidden" name="tax_amount" value="0">
+                                <span class="h3 fw-bold" id="tax_amount">0.00</span>
+                              </dd>
+
+                              <dt class="h4 fw-bold text-light">Grand Total</dt>
+                              <dd class="text-end py-1 px-2 rounded-0 bg-light">
+                                <input type="hidden" name="grand_total" value="0">
+                                <input type="hidden" name="tendered_amount" value="0">
+                                <input type="hidden" name="amount_change" value="0">
+                                <span class="h3 fw-bold" id="grand_total">0.00</span>
+                              </dd>
                             </dl>
+
                         </div>
                     </div>
                 </div>
@@ -139,36 +154,50 @@
     }
 
     function calc() {
-        var sub_total = 0;
-        var grand_total = 0;
-        $('#POS-field table tbody tr').each(function() {
-          price = $(this).find('[name="price[]"]').val()
-          qtyInput = $(this).find('[name="qty[]"]')
-          qty = parseFloat(qtyInput.val()) || 0
-          maxStock = parseFloat($(this).attr('data-max-stock')) || 0
+    let sub_total = 0;
 
-                if (qty > maxStock) {
-              alert(`Only ${maxStock} left in stock.`);
-              qty = maxStock
-              qtyInput.val(maxStock)
-          }
+    $('#POS-field table tbody tr').each(function() {
+        let price = parseFloat($(this).find('[name="price[]"]').val()) || 0;
+        let qtyInput = $(this).find('[name="qty[]"]');
+        let qty = parseFloat(qtyInput.val()) || 0;
+        let maxStock = parseFloat($(this).attr('data-max-stock')) || 0;
 
-                total = parseFloat(price) * qty
-          $(this).find('.product_total').text(total.toLocaleString('en-US'))
-          sub_total += total
-})      
+        if (qty > maxStock) {
+            alert(`Only ${maxStock} left in stock.`);
+            qty = maxStock;
+            qtyInput.val(maxStock);
+        }
 
-        tax = $('[name="tax"]').val()
-        tax = tax / 100;
-        var tax_amount = parseFloat(sub_total) * parseFloat(tax);
-        $('#tax_amount').text(parseFloat(tax_amount).toLocaleString('en-US'))
-        $('[name="tax_amount"]').val(parseFloat(tax_amount))
-        $('#grand_total').text(parseFloat(sub_total).toLocaleString('en-US'))
-        $('[name="grand_total"]').val(parseFloat(sub_total))
-        $('#sub_total').text(parseFloat(sub_total).toLocaleString('en-US'))
-        $('[name="sub_total"]').val(parseFloat(sub_total))
+        let total = price * qty;
+        $(this).find('.product_total').text(total.toLocaleString('en-US', { minimumFractionDigits: 2 }));
+        sub_total += total;
+    });
 
-    }
+    // ✅ check if tax should be applied
+    let applyTax = $('#apply_tax').is(':checked');
+    let tax_rate = applyTax ? (parseFloat($('[name="tax"]').val()) / 100 || 0) : 0;
+    let tax_amount = sub_total * tax_rate;
+
+    let grand_total = sub_total + tax_amount;
+
+    // update subtotal
+    $('#sub_total').text(sub_total.toLocaleString('en-US', { minimumFractionDigits: 2 }));
+    $('[name="sub_total"]').val(sub_total.toFixed(2));
+
+    // update tax
+    $('#tax_amount').text(tax_amount.toLocaleString('en-US', { minimumFractionDigits: 2 }));
+    $('[name="tax_amount"]').val(tax_amount.toFixed(2));
+
+    // update grand total
+    $('#grand_total').text(grand_total.toLocaleString('en-US', { minimumFractionDigits: 2 }));
+    $('[name="grand_total"]').val(grand_total.toFixed(2));
+}
+
+// Recalculate when tax toggle is switched
+$(document).on('change', '#apply_tax', function() {
+    calc();
+});
+
     $(function() {
         $('#product-id').select2({
             placeholder: "Please Select Product here",

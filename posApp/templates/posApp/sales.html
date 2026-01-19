@@ -1,4 +1,4 @@
-{% extends "posApp/base.html" %} 
+{% extends "posApp/base.html" %}
 {% load humanize %}
 {% block pageContent %}
 <div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
@@ -13,7 +13,7 @@
                 <option value="20">20 per page</option>
             </select>
         </div>
-    
+
 </div>
 
 <div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
@@ -43,18 +43,18 @@
                 <tbody>
                     {% for sale in sale_data %}
                     <tr>
-                        <td class="px-2 py-1 text-center">{{ sale.id }}</td>
+                        <td class="px-2 py-1 text-center">{{ forloop.counter }}</td>
                         <td class="px-2 py-1 text-start">{{ sale.date_added|date:'Y-m-d H:i' }}</td>
                         <td class="px-2 py-1 text-start">{{ sale.code }}</td>
                         <td class="px-2 py-1 text-end">{{ sale.grand_total|intcomma }}</td>
                         <td class="px-2 py-1 text-end">({{ sale.tax }}%) {{ sale.tax_amount|intcomma:2 }}</td>
                         <td class="px-2 py-1 text-center">{{ sale.item_count|intcomma }}</td>
                         <td class="px-2 py-1 text-center">
-                            <button class="mdc-button mdc-button--raised p-1 icon-button filled-button--light view-data" 
+                            <button class="mdc-button mdc-button--raised p-1 icon-button filled-button--light view-data"
                                     type="button" data-id="{{ sale.id }}" title="View Receipt">
                                 <i class="material-icons mdc-button__icon">receipt</i>
                             </button>
-                            <button class="mdc-button mdc-button--raised p-1 icon-button filled-button--danger delete-data" 
+                            <button class="mdc-button mdc-button--raised p-1 icon-button filled-button--danger delete-data"
                                     type="button" data-id="{{ sale.id }}" data-code="{{ sale.code }}" title="Delete">
                                 <i class="material-icons mdc-button__icon">deleteoutline</i>
                             </button>

@@ -14,7 +14,7 @@ urlpatterns = [
     path('manage_category', views.manage_category, name="manage_category-page"),
     path('save_category', views.save_category, name="save-category-page"),
     path('delete_category', views.delete_category, name="delete-category"),
-    
+
     path('products/', views.product_list_view, name='product-page'),
 
     path('manage_product', views.manage_Product, name="manage_product-page"),
@@ -35,7 +35,7 @@ urlpatterns = [
     path('system-admin/create_store/', views.create_store, name='create_store'),
     path('system-admin/users/', views.user_list, name='user_list'),
     path('system-admin/users/<int:user_id>/edit/', views.edit_user, name='edit_user'),
-    path('pos/', views.pos, name='cashier-dashboard'), 
+    path('pos/', views.pos, name='cashier-dashboard'),
     path('system-admin/create_store_and_manager/', views.create_store_and_manager, name='create_store_and_manager'),
     path('expenditures/', views.expenditure_list, name='expenditure_list'),
     path('expenditures/add/', views.add_expenditure, name='add_expenditure'),

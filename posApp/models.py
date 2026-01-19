@@ -79,16 +79,18 @@ class Category(models.Model):
  
 class Unit(models.Model):
     store = models.ForeignKey("Store", on_delete=models.CASCADE, related_name="units")
-    name = models.CharField(max_length=50, unique=False)   # Kilogram, Gram, Liter
-    short_name = models.CharField(max_length=10)           # "kg", "g", "L"
-    status = models.IntegerField(default=1)                # 1=Active, 0=Inactive
+    name = models.CharField(max_length=50)   # Kilogram, Gram, Liter
+    short_name = models.CharField(max_length=10)  # "kg", "g", "L"
+    status = models.IntegerField(default=1)       # 1=Active, 0=Inactive
 
     class Meta:
         unique_together = ('store', 'name')  # Prevent duplicates per store
 
     def __str__(self):
-        return f"{self.name} ({self.short_name})"
-      
+        return f"{self.name} ({self.short_name})"  # use short_name
+
+        
+    
 
 class Product(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
@@ -99,7 +101,9 @@ class Product(models.Model):
     expiry_date = models.DateField(null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2) # Selling price
     quantity = models.DecimalField(max_digits=12, decimal_places=3, default=0)  # 🔄 allow fractional qty
-    unit = models.ForeignKey(Unit, on_delete=models.SET_NULL, null=True, blank=True)  # 🔑 NEW
+    unit = models.ForeignKey(
+        Unit, null=True, blank=True, on_delete=models.SET_NULL, related_name="products"
+    )  # 🔑 NEW
     cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     low_stock_threshold = models.DecimalField(max_digits=12, decimal_places=3, default=10)
     status = models.IntegerField(default=1)
@@ -116,7 +120,7 @@ class Product(models.Model):
         return self.quantity <= self.low_stock_threshold
 
     def __str__(self):
-        return f"{self.code} - {self.name} ({self.unit.abbreviation if self.unit else ''})"
+        return f"{self.code} - {self.name} ({self.unit.short_name if self.unit else ''})"
 
 
 from django.db.models import F
@@ -165,6 +169,9 @@ class SalesItem(models.Model):
     price = models.FloatField(default=0)
     qty = models.DecimalField(max_digits=12, decimal_places=3, default=0)
     total = models.FloatField(default=0)
+    unit = models.ForeignKey(
+        Unit, null=True, blank=True, on_delete=models.SET_NULL, related_name="sales_items"
+    )
 
     def __str__(self):
         return f"{self.product.name} x {self.qty}"

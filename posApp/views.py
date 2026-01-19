@@ -24,6 +24,20 @@ from decimal import Decimal
 
 
 
+def cashier_only(view_func):
+    def wrapper(request, *args, **kwargs):
+        if request.user.role != "cashier":
+            return redirect("/")  # redirect admin/manager back home
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+def admin_manager_only(view_func):
+    def wrapper(request, *args, **kwargs):
+        if request.user.role not in ["admin", "manager"]:
+            return redirect("/pos/")
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
 
 
 # Login
@@ -157,7 +171,7 @@ def about(request):
     return render(request, 'posApp/about.html',context)
 
 #Categories
-@login_required
+@admin_manager_only
 def category(request):
     stores = Store.objects.filter(owner=request.user)
 
@@ -169,7 +183,8 @@ def category(request):
     }
     return render(request, 'posApp/category.html',context)
 
-@login_required
+#@login_required
+@admin_manager_only
 def manage_category(request):
     category = {}
 
@@ -194,7 +209,8 @@ def manage_category(request):
 
 
 
-@login_required
+#@login_required
+@admin_manager_only
 def save_category(request):
     data = request.POST
     resp = {'status': 'failed'}
@@ -231,7 +247,8 @@ def save_category(request):
 
     return HttpResponse(json.dumps(resp), content_type="application/json")
 
-@login_required
+#@login_required
+@admin_manager_only
 def delete_category(request):
     data =  request.POST
     resp = {'status':''}
@@ -244,34 +261,36 @@ def delete_category(request):
     return HttpResponse(json.dumps(resp), content_type="application/json")
 
 
-@login_required
-def unit_list(request):
-    units = Unit.objects.filter(store=request.user.store)
-    
-    if request.method == "POST":
-        form = UnitForm(request.POST)
-        if form.is_valid():
-            unit = form.save(commit=False)
-            unit.store = request.user.store
-            unit.save()
-            return redirect("unit_list")
-    else:
-        form = UnitForm()
-    
-    return render(request, "posApp/unit_list.html", {"units": units, "form": form})
-
-    from django.shortcuts import render, get_object_or_404
+#   UNITS
+from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from .models import Unit, Store
 
+@login_required
+@admin_manager_only
 def unit_page(request):
-    """List all units (filtered by store if user is store-specific)"""
-    if request.user.is_superuser:
+    user = request.user
+
+    # Admins: See all stores & their units
+    if user.is_superuser:
         units = Unit.objects.select_related("store").all()
+        stores = Store.objects.all()
+
     else:
-        # Example: if user has a store relation (adjust as per your auth model)
-        units = Unit.objects.filter(store=request.user.store)
-    return render(request, "posApp/unit.html", {"units": units})
+        # Normal users: Only see units belonging to their store
+        store = Store.objects.filter(owner=user).first()
+
+        if store:
+            units = Unit.objects.filter(store=store)
+            stores = Store.objects.filter(id=store.id)
+        else:
+            units = Unit.objects.none()
+            stores = Store.objects.none()
+
+    return render(request, "posApp/unit.html", {
+        "units": units,
+        "stores": stores
+    })
 
 
 def manage_unit(request):
@@ -280,7 +299,7 @@ def manage_unit(request):
     if request.GET.get("id"):
         unit = get_object_or_404(Unit, pk=request.GET["id"])
 
-    stores = Store.objects.all()
+    stores = Store.objects.filter(owner=request.user)
     return render(request, "posApp/manage_unit.html", {"unit": unit, "stores": stores})
 
 
@@ -321,17 +340,18 @@ def delete_unit(request):
 
 # Product
 @login_required
+@admin_manager_only
 def product_list_view(request):
     stores = Store.objects.filter(owner=request.user)
 
-    # Annotate each product with total remaining_quantity
-    product_list = Product.objects.filter(store_id__in=stores).annotate(
+    product_list = Product.objects.filter(store__in=stores).annotate(
         total_remaining_quantity=Sum('stock_entries__remaining_quantity')
     )
 
     low_stock_products = product_list.filter(
         total_remaining_quantity__lte=F('low_stock_threshold')
     )
+
 
     context = {
         'page_title': 'Product List',
@@ -340,17 +360,19 @@ def product_list_view(request):
     }
     return render(request, 'posApp/products.html', context)
 
+
 @login_required
+@admin_manager_only
 def manage_Product(request):
     product = {}
     stores = Store.objects.filter(owner=request.user)
     categories = Category.objects.filter(store__in=stores).all()
-    units = Unit.objects.all()
+    units = Unit.objects.filter(store__in=stores).all()
     if request.method == 'GET':
         data =  request.GET
         id = ''
         if 'id' in data:
-            id= data['id'] 
+            id= data['id']
         if id.isnumeric() and int(id) > 0:
             product = Product.objects.filter(id=id).first()
 
@@ -375,53 +397,102 @@ import uuid
 
 def generate_product_code():
     return f"PRD-{uuid.uuid4().hex[:8].upper()}"  # Example: PRD-5F3A2B1C
-@login_required
 def save_product(request):
     data = request.POST
     resp = {'status': 'failed'}
-    id = data.get('id', '')
+    product_id = data.get('id', '').strip()
 
+    # --- Validate store ---
+    try:
+        store = Store.objects.get(id=data.get('store_id'))
+    except Store.DoesNotExist:
+        resp['msg'] = "Invalid store selected."
+        return HttpResponse(json.dumps(resp), content_type="application/json")
+
+    # --- Validate related models ---
+    category = Category.objects.filter(id=data.get('category_id')).first()
+    unit = Unit.objects.filter(id=data.get('unit')).first()
+
+    if not category:
+        resp['msg'] = "Invalid category."
+        return HttpResponse(json.dumps(resp), content_type="application/json")
+
+    if not unit:
+        resp['msg'] = "Invalid unit selected."
+        return HttpResponse(json.dumps(resp), content_type="application/json")
+
+    # --- Fix expiration date ---
     expiration_date = data.get('expiration_date')
     exp_date = None
     if expiration_date:
         try:
             exp_date = datetime.strptime(expiration_date, "%Y-%m-%d").date()
         except ValueError:
-            exp_date = None
-
-    category = Category.objects.filter(id=data.get('category_id')).first()
-    store = Store.objects.filter(id=data.get('store_id')).first()
+            resp['msg'] = "Invalid expiration date format."
+            return HttpResponse(json.dumps(resp), content_type="application/json")
 
     try:
         quantity = int(data.get('stock', 0))
-        cost_price = float(data.get('cost_price', 0))
-        price = float(data.get('price', 0))
+        cost_price = Decimal(str(data.get('cost_price', 0)))
+        price = Decimal(str(data.get('price', 0)))
 
-        if id.isnumeric() and int(id) > 0:
-            # Update product
-            Product.objects.filter(id=id).update(
-                category=category,
-                store=store,
-                name=data['name'],
-                description=data['description'],
-                quantity=quantity,
-                cost_price=cost_price,
-                price=price,
-                status=data['status'],
-                expiry_date=exp_date
-            )
-            product = Product.objects.get(id=id)
+        if quantity < 0:
+            resp['msg'] = "Quantity cannot be negative."
+            return HttpResponse(json.dumps(resp), content_type="application/json")
+
+    except (ValueError, Decimal.InvalidOperation):
+        resp['msg'] = "Invalid numeric value."
+        return HttpResponse(json.dumps(resp), content_type="application/json")
+
+    try:
+        # =======================================
+        # UPDATE PRODUCT
+        # =======================================
+        if product_id.isnumeric() and int(product_id) > 0:
+            try:
+                product = Product.objects.get(id=product_id)
+            except Product.DoesNotExist:
+                resp['msg'] = "Product not found."
+                return HttpResponse(json.dumps(resp), content_type="application/json")
+
+            # Optional: prevent updating a product from another store
+            if product.store != store:
+                resp['msg'] = "You cannot update product of another store."
+                return HttpResponse(json.dumps(resp), content_type="application/json")
+
+            # Update product fields
+            product.category = category
+            product.store = store
+            product.unit = unit
+            product.name = data['name']
+            product.description = data['description']
+            product.quantity = quantity
+            product.cost_price = cost_price
+            product.price = price
+            product.status = data['status']
+            product.expiry_date = exp_date
+            product.save()
+
+        # =======================================
+        # CREATE NEW PRODUCT
+        # =======================================
         else:
+            # Validate duplicate product names per store
+            if Product.objects.filter(store=store, name=data['name']).exists():
+                resp['msg'] = "A product with this name already exists in this store."
+                return HttpResponse(json.dumps(resp), content_type="application/json")
+
             # Generate unique product code
             code = generate_product_code()
             while Product.objects.filter(code=code).exists():
                 code = generate_product_code()
 
-            # Create product
+            # Create the product
             product = Product.objects.create(
                 code=code,
                 category=category,
                 store=store,
+                unit=unit,
                 name=data['name'],
                 description=data['description'],
                 quantity=quantity,
@@ -431,24 +502,27 @@ def save_product(request):
                 expiry_date=exp_date
             )
 
-            # Create initial stock entry (only for new products)
-            StockEntry.objects.create(
-                product=product,
-                store=store,
-                quantity=quantity,
-                remaining_quantity=quantity,
-                cost_price=cost_price,
-                date_received=timezone.now().date()
-            )
+            # Create stock entry ONLY if quantity > 0
+            if quantity > 0:
+                StockEntry.objects.create(
+                    product=product,
+                    store=store,
+                    quantity=quantity,
+                    remaining_quantity=quantity,
+                    cost_price=cost_price,
+                    date_received=timezone.now().date()
+                )
 
         resp['status'] = 'success'
-        messages.success(request, 'Product successfully saved.')
+        messages.success(request, "Product saved successfully.")
 
     except Exception as e:
         resp['status'] = 'failed'
         resp['msg'] = str(e)
 
     return HttpResponse(json.dumps(resp), content_type="application/json")
+
+
 def deduct_stock_fifo(product, quantity_needed):
     stock_entries = StockEntry.objects.filter(
         product=product,
@@ -473,6 +547,7 @@ def deduct_stock_fifo(product, quantity_needed):
 
 
 @login_required
+@admin_manager_only
 def delete_product(request):
     data =  request.POST
     resp = {'status':''}
@@ -486,34 +561,50 @@ def delete_product(request):
 
 @login_required
 def pos(request):
+    # --- Get stores owned by the current user (cashier) ---
     stores = Store.objects.filter(owner=request.user)
 
-    # Annotate remaining stock per product
+    # Fallback if user has no store
+    if not stores.exists():
+        return render(request, 'posApp/pos.html', {
+            'page_title': "Point of Sale",
+            'products': [],
+            'low_stock_products': [],
+            'product_json': json.dumps([])
+        })
+
+    # --- Get all units ---
+    units = Unit.objects.all()
+
+    # --- Load products only for the current user's stores ---
     product_list = Product.objects.filter(store__in=stores).annotate(
         total_remaining_quantity=Sum('stock_entries__remaining_quantity')
     )
 
-    # Filter low stock products
+    # --- Identify low stock products ---
     low_stock_products = product_list.filter(
         total_remaining_quantity__lte=F('low_stock_threshold')
     )
 
-    # Prepare product JSON with stock data for JavaScript
+    # --- Prepare JSON for frontend ---
     product_json = []
     for product in product_list:
         product_json.append({
             'id': product.id,
             'name': product.name,
             'price': float(product.price),
-            'stock': product.total_remaining_quantity or 0
+            'stock': product.total_remaining_quantity or 0,
+            'unit_id': product.unit.id if product.unit else None,
+            'unit_name': product.unit.name if product.unit else '',
         })
 
     context = {
         'page_title': "Point of Sale",
-        'products': product_list,  # So the template has access to total_remaining_quantity
+        'products': product_list,  # For template access if needed
         'low_stock_products': low_stock_products,
         'product_json': json.dumps(product_json)
     }
+
     return render(request, 'posApp/pos.html', context)
 
 @login_required
@@ -526,7 +617,7 @@ def checkout_modal(request):
     }
     return render(request, 'posApp/checkout.html',context)
 
-@login_required
+#@login_required
 #def save_pos(request):
 #    resp = {'status': 'failed', 'msg': ''}
 #
@@ -613,61 +704,77 @@ def checkout_modal(request):
 #
 #    return HttpResponse(json.dumps(resp), content_type="application/json")
 
+
+from decimal import Decimal
+from datetime import datetime
+from django.db.models import Sum, F
+from django.http import JsonResponse
+from .models import Product, Sales, SalesItem, StockEntry, Store, Customer
+@login_required
 @require_POST
+
+@transaction.atomic
 def save_pos(request):
     try:
-        cart_items = []
+        # --- Get posted data ---
         product_ids = request.POST.getlist('product_id[]')
         qtys = request.POST.getlist('qty[]')
         tendered_amount = Decimal(request.POST.get('tendered_amount', '0'))
-
+        amount_paid = Decimal(request.POST.get('amount_paid', '0'))
         is_credit = request.POST.get('is_credit') == 'true'
         customer_id = request.POST.get('customer_id')
         due_date = request.POST.get('due_date')
-        amount_paid = Decimal(request.POST.get('amount_paid', '0'))
 
+        # --- Ensure cashier has a store ---
         current_store = Store.objects.filter(owner=request.user).first()
+        if not current_store:
+            return JsonResponse({'status': 'failed', 'msg': 'No store found for this cashier.'})
 
         if not product_ids:
-            return JsonResponse({'status': 'failed', 'msg': 'No products provided'})
+            return JsonResponse({'status': 'failed', 'msg': 'No products selected.'})
 
+        # --- Build cart with validation ---
+        cart_items = []
         sub_total = Decimal('0.00')
-        for idx, pid in enumerate(product_ids):
-            product = Product.objects.get(id=pid, store=current_store)
-            qty = Decimal(qtys[idx])
-            price = Decimal(product.price)
 
+        for idx, pid in enumerate(product_ids):
+            product = Product.objects.filter(id=pid, store=current_store).first()
+            if not product:
+                raise ValueError(f"Product ID {pid} does not belong to your store.")
+
+            qty = Decimal(qtys[idx])
+            if qty <= 0:
+                raise ValueError(f"Invalid quantity for product {product.name}.")
+
+            price = Decimal(product.price)
             cart_items.append({
-                'product_id': int(pid),
-                'qty': float(qty),
+                'product': product,
+                'qty': qty,
+                'price': price,
             })
 
             sub_total += price * qty
 
-        # Compute tax
-        tax = Decimal('0.18')  # 18% VAT
-        tax_amount = sub_total * tax
+        # --- Calculate totals ---
+        tax_rate = Decimal('0.18')
+        tax_amount = sub_total * tax_rate
         grand_total = sub_total + tax_amount
+        tendered = amount_paid if is_credit else tendered_amount
+        amount_change = 0 if is_credit else tendered - grand_total
 
-        # If not credit, use tendered amount; else use amount_paid
-        if is_credit:
-            tendered = amount_paid
-        else:
-            tendered = tendered_amount
-
-        amount_change = tendered - grand_total if not is_credit else 0
-
-        # Get customer if provided
+        # --- Customer handling ---
         customer = Customer.objects.filter(id=customer_id).first() if customer_id else None
-        parsed_due_date = datetime.strptime(due_date, "%Y-%m-%d").date() if due_date else None
+        parsed_due_date = None
+        if due_date and is_credit:
+            parsed_due_date = datetime.strptime(due_date, "%Y-%m-%d").date()
 
-        # Save Sale
+        # --- Save Sale ---
         sale = Sales.objects.create(
             store=current_store,
             user=request.user,
             cashier=request.user,
             sub_total=sub_total,
-            tax=tax,
+            tax=tax_rate,
             tax_amount=tax_amount,
             grand_total=grand_total,
             tendered_amount=tendered,
@@ -675,21 +782,48 @@ def save_pos(request):
             is_credit=is_credit,
             customer=customer,
             due_date=parsed_due_date,
-            amount_paid=amount_paid if is_credit else tendered_amount,
+            amount_paid=tendered if is_credit else tendered_amount
         )
 
-        # Save Sale Items (you can add FIFO logic here if needed)
+        # --- Save Sale Items + Deduct FIFO Stock ---
         for item in cart_items:
+            product = item['product']
+            qty_to_deduct = item['qty']
+            price = item['price']
+
+            # Save SaleItem
             SalesItem.objects.create(
                 sale=sale,
-                product_id=item['product_id'],
-                qty=item['qty'],
-                price=Product.objects.get(id=item['product_id']).price
+                product=product,
+                qty=qty_to_deduct,
+                price=price,
+                unit=product.unit if product.unit else None
             )
 
+            # Deduct stock using FIFO
+            stock_entries = StockEntry.objects.select_for_update().filter(
+                product=product,
+                store=current_store,
+                remaining_quantity__gt=0
+            ).order_by('date_received')
+
+            for entry in stock_entries:
+                if qty_to_deduct <= 0:
+                    break
+
+                deduct = min(entry.remaining_quantity, qty_to_deduct)
+                entry.remaining_quantity -= deduct
+                entry.save()
+                qty_to_deduct -= deduct
+
+            if qty_to_deduct > 0:
+                raise ValueError(f"Insufficient stock for {product.name}.")
+
         return JsonResponse({'status': 'success', 'sale_id': sale.id})
+
     except Exception as e:
         return JsonResponse({'status': 'failed', 'msg': str(e)})
+
 #def save_pos(request):
 #    try:
 #        cart_items = []
@@ -740,6 +874,7 @@ def save_pos(request):
 
 
 @login_required
+@admin_manager_only
 def salesList(request):
     stores = Store.objects.filter(owner=request.user)
 
@@ -765,6 +900,7 @@ def salesList(request):
     return render(request, 'posApp/sales.html',context)
 
 @login_required
+@admin_manager_only
 def receipt(request):
     id = request.GET.get('id')
     sales = Sales.objects.filter(id = id).first()
@@ -784,6 +920,7 @@ def receipt(request):
     # return HttpResponse('')
 
 @login_required
+@admin_manager_only
 def delete_sale(request):
     resp = {'status':'failed', 'msg':''}
     id = request.POST.get('id')
@@ -832,6 +969,7 @@ from .models import Store, StoreUser, CustomUser
 from django.contrib.auth.hashers import make_password
 
 @login_required
+@admin_manager_only
 def register_user(request):
     if request.method == 'POST':
         username = request.POST['username']

@@ -1,4 +1,4 @@
-{% extends "posApp/base.html" %} 
+{% extends "posApp/base.html" %}
 {% block pageContent %}
 <div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
     <div class="mdc-card py-2">
@@ -44,22 +44,22 @@
                 <tbody>
                     {% for cat in category %}
                     <tr>
-                        <td class="px-2 py-1 text-center">{{ cat.id }}</td>
+                        <td class="px-2 py-1 text-center">{{ forloop.counter }}</td>
                         <td class="px-2 py-1 text-start">{{ cat.name }}</td>
                         <td class="px-2 py-1 text-start">{{ cat.description }}</td>
                         <td class="px-2 py-1 text-center">
                             {% if cat.status == 1 %}
-                            <span class="badge bg-primary rounded-pill px-3">Active</span> 
+                            <span class="badge bg-primary rounded-pill px-3">Active</span>
                             {% else %}
-                            <span class="badge bg-secondary rounded-pill px-3">Inactive</span> 
+                            <span class="badge bg-secondary rounded-pill px-3">Inactive</span>
                             {% endif %}
                         </td>
                         <td class="px-2 py-1 text-center">
-                            <button class="mdc-button mdc-button--raised p-1 icon-button filled-button--light edit-data" 
+                            <button class="mdc-button mdc-button--raised p-1 icon-button filled-button--light edit-data"
                                     type="button" data-id="{{ cat.pk }}" title="Edit">
                                 <i class="material-icons mdc-button__icon">edit</i>
                             </button>
-                            <button class="mdc-button mdc-button--raised p-1 icon-button filled-button--danger delete-data" 
+                            <button class="mdc-button mdc-button--raised p-1 icon-button filled-button--danger delete-data"
                                     type="button" data-id="{{ cat.pk }}" title="Delete">
                                 <i class="material-icons mdc-button__icon">deleteoutline</i>
                             </button>
