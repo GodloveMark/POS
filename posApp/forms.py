@@ -129,13 +129,16 @@ class ChangeUserPasswordForm(forms.Form):
     confirm_password = forms.CharField(widget=forms.PasswordInput, label="Confirm Password")
 
     def __init__(self, *args, **kwargs):
-        manager = kwargs.pop('manager')  # Pass the logged-in manager
+        manager = kwargs.pop('manager', None)  # SAFE: avoid KeyError
         super().__init__(*args, **kwargs)
 
-        # Users assigned to the manager's stores + the manager themselves
-        self.fields['user'].queryset = CustomUser.objects.filter(
-            stores__owner=manager
-        ).distinct() | CustomUser.objects.filter(id=manager.id)
+        if manager:
+            # Users assigned to manager's stores + manager themself
+            manager_users = CustomUser.objects.filter(stores__owner=manager)
+            self.fields['user'].queryset = (manager_users | CustomUser.objects.filter(id=manager.id)).distinct()
+        else:
+            # fallback — empty queryset
+            self.fields['user'].queryset = CustomUser.objects.none()
 
     def clean(self):
         cleaned_data = super().clean()
@@ -144,3 +147,4 @@ class ChangeUserPasswordForm(forms.Form):
         if pw != cpw:
             raise forms.ValidationError("Passwords do not match.")
         return cleaned_data
+
