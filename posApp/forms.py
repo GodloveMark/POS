@@ -78,3 +78,60 @@ class StockEntryForm(forms.ModelForm):
           self.fields['product'].queryset = Product.objects.none()
           self.fields['store'].queryset = Store.objects.none()
           self.fields['store'].widget = forms.HiddenInput()
+
+
+
+
+from django import forms
+from django.contrib.auth import get_user_model
+from .models import Store
+
+User = get_user_model()
+
+from django import forms
+from django.contrib.auth import get_user_model
+from .models import Store
+
+User = get_user_model()
+
+
+class CreateCashierForm(forms.ModelForm):
+    password = forms.CharField(widget=forms.PasswordInput, label="Password")
+    confirm_password = forms.CharField(widget=forms.PasswordInput, label="Confirm Password")
+    store = forms.ModelChoiceField(queryset=Store.objects.none(), label="Assign Store")
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'store']
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user")   # Manager user
+        super().__init__(*args, **kwargs)
+
+        # Only stores belonging to the manager
+        self.fields['store'].queryset = Store.objects.filter(owner=user)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        pw = cleaned_data.get("password")
+        cpw = cleaned_data.get("confirm_password")
+
+        if pw and cpw and pw != cpw:
+            raise forms.ValidationError("Passwords do not match.")
+
+        return cleaned_data
+
+
+
+class ChangeUserPasswordForm(forms.Form):
+    user = forms.ModelChoiceField(queryset=User.objects.exclude(role='cashier'), label="Select User")
+    new_password = forms.CharField(widget=forms.PasswordInput, label="New Password")
+    confirm_password = forms.CharField(widget=forms.PasswordInput, label="Confirm Password")
+
+    def clean(self):
+        cleaned_data = super().clean()
+        pw = cleaned_data.get("new_password")
+        cpw = cleaned_data.get("confirm_password")
+        if pw != cpw:
+            raise forms.ValidationError("Passwords do not match.")
+        return cleaned_data

@@ -561,51 +561,48 @@ def delete_product(request):
 
 @login_required
 def pos(request):
-    # --- Get stores owned by the current user (cashier) ---
-    stores = Store.objects.filter(owner=request.user)
+    user = request.user
 
-    # Fallback if user has no store
+    # Admin / Manager: stores they own
+    if user.role in ["admin", "manager"]:
+        stores = user.owned_stores.all()
+
+    # Cashier: stores assigned to them
+    elif user.role == "cashier":
+        stores = user.stores.all()
+
+    # If user has no store
     if not stores.exists():
-        return render(request, 'posApp/pos.html', {
-            'page_title': "Point of Sale",
-            'products': [],
-            'low_stock_products': [],
-            'product_json': json.dumps([])
+        return render(request, "posApp/pos.html", {
+            "products": [],
+            "low_stock_products": [],
+            "product_json": "[]",
+            "msg": "You are not assigned to any store."
         })
 
-    # --- Get all units ---
-    units = Unit.objects.all()
-
-    # --- Load products only for the current user's stores ---
-    product_list = Product.objects.filter(store__in=stores).annotate(
-        total_remaining_quantity=Sum('stock_entries__remaining_quantity')
+    # Load products for all stores this user has access to
+    products = Product.objects.filter(
+        store__in=stores
+    ).annotate(
+        total_remaining_quantity=Sum("stock_entries__remaining_quantity")
     )
 
-    # --- Identify low stock products ---
-    low_stock_products = product_list.filter(
-        total_remaining_quantity__lte=F('low_stock_threshold')
-    )
+    # Serialize for JS
+    product_json = json.dumps([
+        {
+            "id": p.id,
+            "name": p.name,
+            "price": float(p.price),
+            "stock": float(p.total_remaining_quantity or 0)
+        } for p in products
+    ])
 
-    # --- Prepare JSON for frontend ---
-    product_json = []
-    for product in product_list:
-        product_json.append({
-            'id': product.id,
-            'name': product.name,
-            'price': float(product.price),
-            'stock': product.total_remaining_quantity or 0,
-            'unit_id': product.unit.id if product.unit else None,
-            'unit_name': product.unit.name if product.unit else '',
-        })
-
-    context = {
-        'page_title': "Point of Sale",
-        'products': product_list,  # For template access if needed
-        'low_stock_products': low_stock_products,
-        'product_json': json.dumps(product_json)
-    }
-
-    return render(request, 'posApp/pos.html', context)
+    return render(request, "posApp/pos.html", {
+        "products": products,
+        "product_json": product_json,
+        "stores": stores
+    })
+ 
 
 @login_required
 def checkout_modal(request):
@@ -725,10 +722,16 @@ def save_pos(request):
         customer_id = request.POST.get('customer_id')
         due_date = request.POST.get('due_date')
 
-        # --- Ensure cashier has a store ---
-        current_store = Store.objects.filter(owner=request.user).first()
+        user = request.user
+
+        # --- Identify user store ---
+        if user.role == "cashier":
+            current_store = user.assigned_stores.first()
+        else:
+            current_store = Store.objects.filter(owner=user).first()
+
         if not current_store:
-            return JsonResponse({'status': 'failed', 'msg': 'No store found for this cashier.'})
+            return JsonResponse({'status': 'failed', 'msg': 'No store assigned to this user.'})
 
         if not product_ids:
             return JsonResponse({'status': 'failed', 'msg': 'No products selected.'})
@@ -747,6 +750,7 @@ def save_pos(request):
                 raise ValueError(f"Invalid quantity for product {product.name}.")
 
             price = Decimal(product.price)
+
             cart_items.append({
                 'product': product,
                 'qty': qty,
@@ -764,15 +768,13 @@ def save_pos(request):
 
         # --- Customer handling ---
         customer = Customer.objects.filter(id=customer_id).first() if customer_id else None
-        parsed_due_date = None
-        if due_date and is_credit:
-            parsed_due_date = datetime.strptime(due_date, "%Y-%m-%d").date()
+        parsed_due_date = datetime.strptime(due_date, "%Y-%m-%d").date() if due_date and is_credit else None
 
         # --- Save Sale ---
         sale = Sales.objects.create(
             store=current_store,
-            user=request.user,
-            cashier=request.user,
+            user=user,
+            cashier=user,
             sub_total=sub_total,
             tax=tax_rate,
             tax_amount=tax_amount,
@@ -785,7 +787,7 @@ def save_pos(request):
             amount_paid=tendered if is_credit else tendered_amount
         )
 
-        # --- Save Sale Items + Deduct FIFO Stock ---
+        # --- Save Sale Items + FIFO Stock ---
         for item in cart_items:
             product = item['product']
             qty_to_deduct = item['qty']
@@ -800,7 +802,7 @@ def save_pos(request):
                 unit=product.unit if product.unit else None
             )
 
-            # Deduct stock using FIFO
+            # FIFO stock deduction
             stock_entries = StockEntry.objects.select_for_update().filter(
                 product=product,
                 store=current_store,
@@ -1211,6 +1213,7 @@ from datetime import datetime
 from .models import Sales, SalesItem, Expenditure, Product
 
 @login_required
+@admin_manager_only
 def report_view(request):
     store = Store.objects.filter(owner=request.user).first()
 
@@ -1289,7 +1292,7 @@ def report_view(request):
 import calendar
 
 from .models import Expenditure
-from .forms import ExpenditureForm
+from .forms import ExpenditureForm,  CreateCashierForm, ChangeUserPasswordForm
 
 
 def expenditure_list(request):
@@ -1321,6 +1324,7 @@ def add_expenditure(request):
     })
 
 
+@admin_manager_only
 def delete_expenditure(request, pk):
     expenditure = get_object_or_404(Expenditure, pk=pk, store__owner=request.user)
     expenditure.delete()
@@ -1455,6 +1459,7 @@ def supplier_list(request):
 from .models import StockEntry
 from .forms import StockEntryForm
 
+@admin_manager_only
 def add_stock_entry(request):
     if request.method == 'POST':
         form = StockEntryForm(request.POST, user=request.user)
@@ -1704,3 +1709,55 @@ def save_credit_sale(request):
     # Add SalesItems and deduct from FIFO stock here
 
     return redirect('credit-sales')
+
+
+
+
+User = get_user_model()
+
+# ----------------- CREATE CASHIER -----------------
+@admin_manager_only
+def create_cashier(request):
+    if request.method == "POST":
+        form = CreateCashierForm(request.POST, user=request.user)
+
+        if form.is_valid():
+            username = form.cleaned_data["username"]
+            password = form.cleaned_data["password"]
+            store = form.cleaned_data["store"]  # Already validated store
+
+            # Create cashier
+            cashier = CustomUser.objects.create_user(
+                username=username,
+                password=password,
+                role="cashier"
+            )
+
+            # Assign cashier to store
+            store.cashiers.add(cashier)
+
+            messages.success(request, "Cashier created successfully.")
+            return redirect("create-cashier")
+        else:
+            return render(request, "posApp/create_cashier.html", {"form": form})
+
+    form = CreateCashierForm(user=request.user)
+    return render(request, "posApp/create_cashier.html", {"form": form})
+
+
+
+# ----------------- CHANGE USER PASSWORD -----------------
+@admin_manager_only
+def change_user_password(request):
+    if request.method == "POST":
+        form = ChangeUserPasswordForm(request.POST)
+        if form.is_valid():
+            user = form.cleaned_data['user']
+            user.set_password(form.cleaned_data['new_password'])
+            user.save()
+            messages.success(request, f"Password for '{user.username}' changed successfully.")
+            return redirect('change-user-password')
+    else:
+        form = ChangeUserPasswordForm()
+
+    return render(request, 'posApp/change_user_password.html', {'form': form})

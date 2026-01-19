@@ -58,6 +58,9 @@ urlpatterns = [
     path('delete_unit/', views.delete_unit, name="delete-unit"),
 
 
+    path('create-cashier/', views.create_cashier, name='create-cashier'),
+    path('change-user-password/', views.change_user_password, name='change-user-password'),
+
 
     # path('employees', views.employees, name="employee-page"),
     # path('manage_employees', views.manage_employees, name="manage_employees-page"),

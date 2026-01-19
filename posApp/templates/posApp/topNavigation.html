@@ -9,26 +9,42 @@
             <div class="menu-button-container menu-profile d-none d-md-block">
                 <button class="mdc-button mdc-menu-button">
                     <span class="d-flex align-items-center">
-                    <span class="figure">
-                        <img src="{% static 'posApp/assets/material-admin/images/faces/ava.jpg' %}" alt="user" class="user">
-                    </span>
-                    <span class="user-name">{{ user.username }}</span>
+                        <span class="figure">
+                            <img src="{% static 'posApp/assets/material-admin/images/faces/ava.jpg' %}" alt="user" class="user">
+                        </span>
+                        <span class="user-name">{{ user.username }}</span>
                     </span>
                 </button>
                 <div class="mdc-menu mdc-menu-surface" tabindex="-1">
                     <ul class="mdc-list" role="menu" aria-hidden="true" aria-orientation="vertical">
-                       <!-- <li class="mdc-list-item" role="menuitem">
-                            <a class="text-dark" href="{% url 'redirect-admin' %}">
+
+                        {% if user.role in "admin manager" %}
+                        <!-- Create Cashier -->
+                        <li class="mdc-list-item" role="menuitem">
+                            <a class="text-dark" href="{% url 'create-cashier' %}">
                                 <div class="item-thumbnail item-thumbnail-icon-only">
-                                    <i class="mdi mdi-settings-outline text-dark"></i>
+                                    <i class="mdi mdi-account-plus text-dark"></i>
                                 </div>
                                 <div class="item-content d-flex align-items-start flex-column justify-content-center">
-                                    <h6 class="item-subject font-weight-normal">
-                                        Admin
-                                    </h6>
+                                    <h6 class="item-subject font-weight-normal">Create Cashier</h6>
                                 </div>
                             </a>
-                        </li>-->
+                        </li>
+
+                        <!-- Change User Password -->
+                        <li class="mdc-list-item" role="menuitem">
+                            <a class="text-dark" href="{% url 'change-user-password' %}">
+                                <div class="item-thumbnail item-thumbnail-icon-only">
+                                    <i class="mdi mdi-lock-reset text-dark"></i>
+                                </div>
+                                <div class="item-content d-flex align-items-start flex-column justify-content-center">
+                                    <h6 class="item-subject font-weight-normal">Change User Password</h6>
+                                </div>
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        <!-- Logout -->
                         <li class="mdc-list-item" role="menuitem">
                             <a class="text-dark" href="{% url 'logout' %}">
                                 <div class="item-thumbnail item-thumbnail-icon-only">
@@ -39,6 +55,7 @@
                                 </div>
                             </a>
                         </li>
+
                     </ul>
                 </div>
             </div>

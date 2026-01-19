@@ -1,0 +1,12 @@
+{% extends "posApp/base.html" %}
+
+{% block pageContent %}
+<h3>Create Cashier</h3>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Create Cashier</button>
+</form>
+
+{% endblock %}

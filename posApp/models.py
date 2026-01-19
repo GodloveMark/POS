@@ -58,6 +58,7 @@ class Store(models.Model):
         blank=True,
         related_name='owned_stores'
     )
+    cashiers = models.ManyToManyField('CustomUser', related_name='stores')
     date_added = models.DateTimeField(default=timezone.now)
     date_updated = models.DateTimeField(auto_now=True)
 
