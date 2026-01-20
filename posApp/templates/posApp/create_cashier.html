@@ -2,49 +2,86 @@
 
 {% block pageContent %}
 <div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
-    <div class="card p-4">
-        <h4 class="card-title">Create Cashier</h4>
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white">
+            <h4 class="card-title mb-0">✨ Create New Cashier</h4>
+        </div>
+        <div class="card-body p-4">
+            <form method="post" class="needs-validation" novalidate>
+                {% csrf_token %}
 
-        <form method="post">
-            {% csrf_token %}
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger shadow-sm">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
 
-            {% if form.errors %}
-                <div class="alert alert-danger">Please fix the errors below.</div>
-            {% endif %}
+                <div class="row">
+                    <div class="col-md-6 border-end">
+                        <h5 class="text-muted mb-3">Account Information</h5>
+                        
+                        <div class="form-group mb-3">
+                            <label class="form-label fw-bold">{{ form.username.label }}</label>
+                            {{ form.username }}
+                            {% if form.username.errors %}
+                                <div class="text-danger small">{{ form.username.errors.0 }}</div>
+                            {% endif %}
+                        </div>
 
-            <!-- Username -->
-            <div class="form-group mb-3">
-                {{ form.username.label_tag }}
-                {{ form.username }}
-            </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label fw-bold">{{ form.email.label }}</label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                                <div class="text-danger small">{{ form.email.errors.0 }}</div>
+                            {% endif %}
+                        </div>
 
-            <!-- Email -->
-            <div class="form-group mb-3">
-                {{ form.email.label_tag }}
-                {{ form.email }}
-            </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label fw-bold">Assigned Store</label>
+                            {{ form.store }}
+                            <div class="form-text">Select the branch where this cashier will operate.</div>
+                        </div>
+                    </div>
 
-            <!-- Store Selection -->
-            <div class="form-group mb-3">
-                {{ form.store.label_tag }}
-                {{ form.store }}
-            </div>
+                    <div class="col-md-6 ps-md-4">
+                        <h5 class="text-muted mb-3">Security & Access</h5>
+                        
+                        <div class="form-group mb-3">
+                            <label class="form-label fw-bold">{{ form.password.label }}</label>
+                            {{ form.password }}
+                            {% if form.password.errors %}
+                                <div class="text-danger small">{{ form.password.errors.0 }}</div>
+                            {% endif %}
+                        </div>
 
-            <!-- Password -->
-            <div class="form-group mb-3">
-                {{ form.password.label_tag }}
-                {{ form.password }}
-            </div>
+                        <div class="form-group mb-4">
+                            <label class="form-label fw-bold">{{ form.confirm_password.label }}</label>
+                            {{ form.confirm_password }}
+                        </div>
+                        
+                        <div class="alert alert-info py-2">
+                            <small><i class="mdi mdi-information-outline"></i> Cashiers will be required to change their password upon first login.</small>
+                        </div>
+                    </div>
+                </div>
 
-            <!-- Confirm Password -->
-            <div class="form-group mb-3">
-                {{ form.confirm_password.label_tag }}
-                {{ form.confirm_password }}
-            </div>
+                <hr class="my-4">
 
-            <button type="submit" class="btn btn-primary">➕ Create Cashier</button>
-            <a href="{% url 'user_list' %}" class="btn btn-secondary">Cancel</a>
-        </form>
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="#" class="btn btn-light border">Cancel</a>
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="mdi mdi-account-plus"></i> Confirm & Create Cashier
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
+
+<script>
+    // Automatically add Bootstrap classes to Django form widgets
+    document.querySelectorAll('input, select').forEach(element => {
+        element.classList.add('form-control');
+    });
+</script>
 {% endblock %}

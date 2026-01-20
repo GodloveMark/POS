@@ -1,65 +1,95 @@
 {% load static %}
-<!-- partial:partials/_navbar.html -->
-<header class="mdc-top-app-bar border-bottom shadow">
+<header class="mdc-top-app-bar border-bottom shadow-sm bg-white">
     <div class="mdc-top-app-bar__row">
         <div class="mdc-top-app-bar__section mdc-top-app-bar__section--align-start">
-            <button class="material-icons mdc-top-app-bar__navigation-icon mdc-icon-button sidebar-toggler">menu</button>
+            <button class="material-icons mdc-top-app-bar__navigation-icon mdc-icon-button sidebar-toggler text-dark">menu</button>
+            <span class="mdc-top-app-bar__title text-dark d-none d-sm-block">POS System</span>
         </div>
+        
         <div class="mdc-top-app-bar__section mdc-top-app-bar__section--align-end mdc-top-app-bar__section-right">
-            <div class="menu-button-container menu-profile d-none d-md-block">
-                <button class="mdc-button mdc-menu-button">
+            <div class="menu-button-container menu-profile">
+                <button class="mdc-button mdc-menu-button d-flex align-items-center px-2">
                     <span class="d-flex align-items-center">
-                        <span class="figure">
-                            <img src="{% static 'posApp/assets/material-admin/images/faces/ava.jpg' %}" alt="user" class="user">
+                        <span class="figure me-2">
+                            <img src="{% static 'posApp/assets/material-admin/images/faces/ava.jpg' %}" alt="user" class="user rounded-circle border shadow-sm" style="width:32px; height:32px;">
                         </span>
-                        <span class="user-name">{{ user.username }}</span>
+                        <div class="text-start d-none d-md-block">
+                            <span class="user-name fw-bold text-dark d-block" style="line-height: 1;">{{ user.username }}</span>
+                            <small class="text-muted" style="font-size: 10px; text-transform: uppercase;">{{ user.role }}</small>
+                        </div>
+                        <i class="mdi mdi-chevron-down text-muted ms-2"></i>
                     </span>
                 </button>
-                <div class="mdc-menu mdc-menu-surface" tabindex="-1">
-                    <ul class="mdc-list" role="menu" aria-hidden="true" aria-orientation="vertical">
 
+                <div class="mdc-menu mdc-menu-surface shadow-lg border-0" tabindex="-1" style="min-width: 220px;">
+                    <div class="p-3 border-bottom bg-light">
+                        <p class="mb-0 fw-bold">{{ user.first_name }} {{ user.last_name }}</p>
+                        <small class="text-muted">{{ user.email }}</small>
+                    </div>
+
+                    <ul class="mdc-list py-1" role="menu" aria-hidden="true" aria-orientation="vertical">
+                        
                         {% if user.role in "admin manager" %}
-                        <!-- Create Cashier -->
                         <li class="mdc-list-item" role="menuitem">
-                            <a class="text-dark" href="{% url 'create-cashier' %}">
-                                <div class="item-thumbnail item-thumbnail-icon-only">
-                                    <i class="mdi mdi-account-plus text-dark"></i>
+                            <a class="text-dark d-flex align-items-center text-decoration-none w-100 py-2 px-3" href="{% url 'create-cashier' %}">
+                                <div class="item-thumbnail me-3">
+                                    <div class="rounded-circle bg-soft-primary p-2">
+                                        <i class="mdi mdi-account-plus text-primary"></i>
+                                    </div>
                                 </div>
-                                <div class="item-content d-flex align-items-start flex-column justify-content-center">
-                                    <h6 class="item-subject font-weight-normal">Create Cashier</h6>
+                                <div class="item-content">
+                                    <h6 class="item-subject mb-0" style="font-size: 0.9rem;">Create Cashier</h6>
                                 </div>
                             </a>
                         </li>
 
-                        <!-- Change User Password -->
                         <li class="mdc-list-item" role="menuitem">
-                            <a class="text-dark" href="{% url 'change-user-password' %}">
-                                <div class="item-thumbnail item-thumbnail-icon-only">
-                                    <i class="mdi mdi-lock-reset text-dark"></i>
+                            <a class="text-dark d-flex align-items-center text-decoration-none w-100 py-2 px-3" href="{% url 'change-user-password' %}">
+                                <div class="item-thumbnail me-3">
+                                    <div class="rounded-circle bg-soft-warning p-2">
+                                        <i class="mdi mdi-lock-reset text-warning"></i>
+                                    </div>
                                 </div>
-                                <div class="item-content d-flex align-items-start flex-column justify-content-center">
-                                    <h6 class="item-subject font-weight-normal">Change User Password</h6>
+                                <div class="item-content">
+                                    <h6 class="item-subject mb-0" style="font-size: 0.9rem;">Reset Password</h6>
                                 </div>
                             </a>
                         </li>
                         {% endif %}
 
-                        <!-- Logout -->
+                        <div class="border-top my-1"></div>
+
                         <li class="mdc-list-item" role="menuitem">
-                            <a class="text-dark" href="{% url 'logout' %}">
-                                <div class="item-thumbnail item-thumbnail-icon-only">
-                                    <i class="mdi mdi-logout text-dark"></i>
+                            <a class="text-danger d-flex align-items-center text-decoration-none w-100 py-2 px-3" href="{% url 'logout' %}">
+                                <div class="item-thumbnail me-3">
+                                    <div class="rounded-circle bg-soft-danger p-2">
+                                        <i class="mdi mdi-logout text-danger"></i>
+                                    </div>
                                 </div>
-                                <div class="item-content d-flex align-items-start flex-column justify-content-center">
-                                    <h6 class="item-subject font-weight-normal">Logout</h6>
+                                <div class="item-content">
+                                    <h6 class="item-subject mb-0 fw-bold" style="font-size: 0.9rem;">Logout</h6>
                                 </div>
                             </a>
                         </li>
-
                     </ul>
                 </div>
             </div>
         </div>
     </div>
 </header>
-<!-- partial -->
+
+<style>
+    /* Custom Helper Classes for the "Soft" look */
+    .bg-soft-primary { background-color: rgba(13, 110, 253, 0.1); }
+    .bg-soft-warning { background-color: rgba(255, 193, 7, 0.1); }
+    .bg-soft-danger { background-color: rgba(220, 53, 69, 0.1); }
+    
+    .mdc-list-item:hover {
+        background-color: #f8f9fa;
+        transition: 0.2s ease;
+    }
+    
+    .mdc-top-app-bar {
+        z-index: 1000;
+    }
+</style>
