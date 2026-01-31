@@ -59,15 +59,28 @@
                             {% endif %}
                         </td>
                         <td class="px-2 py-1 text-center">
-                            <button class="mdc-button mdc-button--raised p-1 icon-button filled-button--light edit-data"
-                                    type="button" data-id="{{ product.pk }}" title="Edit">
-                                <i class="material-icons mdc-button__icon">edit</i>
-                            </button>
-                            <button class="mdc-button mdc-button--raised p-1 icon-button filled-button--danger delete-data"
-                                    type="button" data-id="{{ product.pk }}" title="Delete">
-                                <i class="material-icons mdc-button__icon">deleteoutline</i>
-                            </button>
-                        </td>
+
+    <!-- STOCK LEDGER -->
+    <a href="{% url 'stock_ledger' product.id product.store.id %}"
+       class="mdc-button mdc-button--raised p-1 icon-button filled-button--info"
+       title="Stock Movements">
+        <i class="material-icons mdc-button__icon">timeline</i>
+    </a>
+
+    <!-- EDIT -->
+    <button class="mdc-button mdc-button--raised p-1 icon-button filled-button--light edit-data"
+            type="button" data-id="{{ product.pk }}" title="Edit">
+        <i class="material-icons mdc-button__icon">edit</i>
+    </button>
+
+    <!-- DELETE -->
+    <button class="mdc-button mdc-button--raised p-1 icon-button filled-button--danger delete-data"
+            type="button" data-id="{{ product.pk }}" title="Delete">
+        <i class="material-icons mdc-button__icon">delete_outline</i>
+    </button>
+
+</td>
+
                     </tr>
                     {% endfor %}
                 </tbody>

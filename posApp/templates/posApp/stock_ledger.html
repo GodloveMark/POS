@@ -1,0 +1,110 @@
+{% extends "posApp/base.html" %}
+
+{% block pageContent %}
+
+        <div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-12">
+            <div class="mdc-card p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title mb-0 text-primary">{{ product.name }}</h5>
+                        <p class="text-muted small mb-0"><i class="mdi mdi-store"></i> {{ store.name }}</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-primary btn-sm rounded-pill" onclick="window.print()">
+                            <i class="mdi mdi-printer"></i> Print
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-12">
+            <div class="mdc-card">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="py-3 px-4 text-secondary small fw-bold">DATE</th>
+                                <th class="py-3 text-secondary small fw-bold">MOVEMENT</th>
+                                <th class="py-3 text-center text-secondary small fw-bold">QTY</th>
+                                <th class="py-3 text-center text-secondary small fw-bold">BALANCE</th>
+                                <th class="py-3 px-4 text-secondary small fw-bold">REF/NOTES</th>
+                            </tr>
+                        </thead>
+                        <tbody class="border-top-0">
+                            {% for m, balance in rows %}
+                            <tr>
+                                <td class="px-4 text-nowrap align-middle">
+                                    {{ m.created_at|date:"M d, Y" }}<br>
+                                    <small class="text-muted">{{ m.created_at|date:"H:i" }}</small>
+                                </td>
+                                <td class="align-middle">
+                                    {% if m.quantity > 0 %}
+                                    <span class="badge bg-success-subtle text-success px-2 py-1 border border-success">
+                                        <i class="mdi mdi-arrow-up"></i> {{ m.movement_type }}
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-danger-subtle text-danger px-2 py-1 border border-danger">
+                                        <i class="mdi mdi-arrow-down"></i> {{ m.movement_type }}
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center align-middle fw-bold">
+                                    <span class="{% if m.quantity > 0 %}text-success{% else %}text-danger{% endif %}">
+                                        {{ m.quantity }}
+                                    </span>
+                                </td>
+                                <td class="text-center align-middle">
+                                    <div class="p-1 bg-dark text-white rounded small fw-bold" style="width: 60px; margin: 0 auto;">
+                                        {{ balance }}
+                                    </div>
+                                </td>
+                                <td class="px-4 align-middle">
+                                    <span class="text-muted small">{{ m.reference|default:"---" }}</span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-5">
+                                    <i class="mdi mdi-database-off d-block text-muted" style="font-size: 2rem;"></i>
+                                    <span class="text-muted">No stock history recorded for this item.</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+   
+
+<style>
+    /* These fixes ensure compatibility with your Material Admin theme */
+    .mdc-card {
+        border: none;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        border-radius: 8px;
+    }
+    .table thead th {
+        border-top: none;
+        letter-spacing: 0.5px;
+    }
+    .badge {
+        font-weight: 500;
+        font-size: 0.75rem;
+    }
+    .bg-success-subtle { background-color: #e8f5e9 !important; }
+    .bg-danger-subtle { background-color: #ffebee !important; }
+    
+    /* Important fix for the "overlapping" issue */
+    .table-responsive {
+        border: none !important;
+        overflow-x: auto;
+    }
+    
+    @media print {
+        .mdc-drawer, .mdc-top-app-bar, .btn { display: none !important; }
+        .mdc-drawer-app-content { margin-left: 0 !important; }
+    }
+</style>
+{% endblock pageContent %}

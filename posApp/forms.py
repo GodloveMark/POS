@@ -148,3 +148,55 @@ class ChangeUserPasswordForm(forms.Form):
             raise forms.ValidationError("Passwords do not match.")
         return cleaned_data
 
+
+
+
+from django import forms
+from .models import StoreSettings
+from decimal import Decimal, InvalidOperation
+
+class StoreSettingsForm(forms.ModelForm):
+    tax_percentage = forms.DecimalField(
+        required=False,
+        min_value=0,
+        max_digits=5,
+        decimal_places=2,
+        initial=Decimal("0.00"),
+    )
+
+    class Meta:
+        model = StoreSettings
+        exclude = ("store",)
+        widgets = {
+            "receipt_footer": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def clean_tax_percentage(self):
+        value = self.cleaned_data.get("tax_percentage")
+        if value is None:
+            return Decimal("0.00")
+        try:
+            return Decimal(value)
+        except (InvalidOperation, TypeError):
+            return Decimal("0.00")
+
+
+
+
+class ProductForm(forms.ModelForm):
+
+    def __init__(self, *args, **kwargs):
+        store = kwargs.pop("store")
+        super().__init__(*args, **kwargs)
+
+        settings = store.settings
+
+        if not settings.enable_categories:
+            self.fields.pop("category", None)
+
+        if not settings.enable_units:
+            self.fields.pop("unit", None)
+
+        if not settings.enable_expiry:
+            self.fields.pop("expiry_date", None)
+

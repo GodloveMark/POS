@@ -4,6 +4,8 @@ from django.db import models
 from django.utils import timezone
 
 
+from django.db.models import Sum
+
 
 # Create your models here.
 
@@ -117,6 +119,12 @@ class Product(models.Model):
             remaining_quantity__gt=0
         ).aggregate(total=Sum('remaining_quantity'))['total'] or 0
 
+    @property
+    def current_stock(self):
+        return self.movements.aggregate(
+            total=Sum("quantity")
+        )["total"] or 0
+
     def is_low_stock(self):
         return self.quantity <= self.low_stock_threshold
 
@@ -163,19 +171,21 @@ class Sales(models.Model):
             self.code = f"S-{uuid.uuid4().hex[:8].upper()}"
         super().save(*args, **kwargs)
 
-
 class SalesItem(models.Model):
     sale = models.ForeignKey(Sales, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
     price = models.FloatField(default=0)
     qty = models.DecimalField(max_digits=12, decimal_places=3, default=0)
     total = models.FloatField(default=0)
-    unit = models.ForeignKey(
-        Unit, null=True, blank=True, on_delete=models.SET_NULL, related_name="sales_items"
-    )
+    unit = models.ForeignKey(Unit, null=True, blank=True, on_delete=models.SET_NULL)
+
+    def save(self, *args, **kwargs):
+        self.total = float(self.qty) * float(self.price)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.product.name} x {self.qty}"
+
 
 
 class StoreUser(models.Model):
@@ -257,7 +267,95 @@ class StockEntry(models.Model):
     def __str__(self):
         return f"{self.product.name} - {self.quantity} units"
 
+    #def save(self, *args, **kwargs):
+    #    if not self.pk:
+    #        self.remaining_quantity = self.quantity
+    #    super().save(*args, **kwargs)
     def save(self, *args, **kwargs):
-        if not self.pk:
+        is_new = self.pk is None
+    
+        if is_new:
             self.remaining_quantity = self.quantity
+    
         super().save(*args, **kwargs)
+    
+        # create movement when new stock added
+        if is_new:
+            StockMovement.objects.create(
+                product=self.product,
+                store=self.store,
+                movement_type="IN",
+                quantity=self.quantity,
+                unit_price=self.cost_price,
+                reference=f"STOCK-{self.id}"
+            )
+
+
+
+
+from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+
+class StoreSettings(models.Model):
+    store = models.OneToOneField(
+        "Store",
+        on_delete=models.CASCADE,
+        related_name="settings"
+    )
+
+    # 🔹 Feature toggles
+    enable_categories = models.BooleanField(default=True)
+    enable_units = models.BooleanField(default=True)
+    enable_expiry = models.BooleanField(default=False)
+    enable_barcode = models.BooleanField(default=True)
+    enable_low_stock_alert = models.BooleanField(default=True)
+    enable_discounts = models.BooleanField(default=True)
+    enable_credit_sales = models.BooleanField(default=False)
+
+    # 🔹 Business config
+    tax_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    currency = models.CharField(max_length=10, default="TZS")
+    receipt_footer = models.TextField(blank=True, null=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.store.name} Settings"
+
+
+@receiver(post_save, sender=Store)
+def create_store_settings(sender, instance, created, **kwargs):
+    if created:
+        StoreSettings.objects.create(store=instance)
+
+
+
+class StockMovement(models.Model):
+
+    TYPES = (
+        ("IN", "Stock In"),
+        ("SALE", "Sale"),
+        ("ADJUST", "Adjustment"),
+        ("RETURN", "Return"),
+    )
+
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="movements")
+    store = models.ForeignKey(Store, on_delete=models.CASCADE)
+
+    movement_type = models.CharField(max_length=10, choices=TYPES)
+
+    quantity = models.DecimalField(max_digits=12, decimal_places=3)  # +in / -out
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+    reference = models.CharField(max_length=255, blank=True, null=True)
+
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.product.name} {self.movement_type} {self.quantity}"

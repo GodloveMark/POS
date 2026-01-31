@@ -366,6 +366,10 @@ def product_list_view(request):
 def manage_Product(request):
     product = {}
     stores = Store.objects.filter(owner=request.user)
+    store = stores.first()
+
+    settings = StoreSettings.objects.filter(store=store).first()
+
     categories = Category.objects.filter(store__in=stores).all()
     units = Unit.objects.filter(store__in=stores).all()
     if request.method == 'GET':
@@ -381,6 +385,7 @@ def manage_Product(request):
         'categories' : categories,
         'stores' : stores,
         'units': units,
+        'settings': settings,
     }
     return render(request, 'posApp/manage_product.html',context)
 
@@ -397,112 +402,253 @@ import uuid
 
 def generate_product_code():
     return f"PRD-{uuid.uuid4().hex[:8].upper()}"  # Example: PRD-5F3A2B1C
+#def save_product(request):
+#    data = request.POST
+#    resp = {'status': 'failed'}
+#    product_id = data.get('id', '').strip()
+#
+#    # --- Validate store ---
+#    try:
+#        store = Store.objects.get(id=data.get('store_id'))
+#    except Store.DoesNotExist:
+#        resp['msg'] = "Invalid store selected."
+#        return HttpResponse(json.dumps(resp), content_type="application/json")
+#
+#    # --- Validate related models ---
+#    category = Category.objects.filter(id=data.get('category_id')).first()
+#    unit = Unit.objects.filter(id=data.get('unit')).first()
+#
+#    if not category:
+#        resp['msg'] = "Invalid category."
+#        return HttpResponse(json.dumps(resp), content_type="application/json")
+#
+#    if not unit:
+#        resp['msg'] = "Invalid unit selected."
+#        return HttpResponse(json.dumps(resp), content_type="application/json")
+#
+#    # --- Fix expiration date ---
+#    expiration_date = data.get('expiration_date')
+#    exp_date = None
+#    if expiration_date:
+#        try:
+#            exp_date = datetime.strptime(expiration_date, "%Y-%m-%d").date()
+#        except ValueError:
+#            resp['msg'] = "Invalid expiration date format."
+#            return HttpResponse(json.dumps(resp), content_type="application/json")
+#
+#    try:
+#        quantity = int(data.get('stock', 0))
+#        cost_price = Decimal(str(data.get('cost_price', 0)))
+#        price = Decimal(str(data.get('price', 0)))
+#
+#        if quantity < 0:
+#            resp['msg'] = "Quantity cannot be negative."
+#            return HttpResponse(json.dumps(resp), content_type="application/json")
+#
+#    except (ValueError, Decimal.InvalidOperation):
+#        resp['msg'] = "Invalid numeric value."
+#        return HttpResponse(json.dumps(resp), content_type="application/json")
+#
+#    try:
+#        # =======================================
+#        # UPDATE PRODUCT
+#        # =======================================
+#        if product_id.isnumeric() and int(product_id) > 0:
+#            try:
+#                product = Product.objects.get(id=product_id)
+#            except Product.DoesNotExist:
+#                resp['msg'] = "Product not found."
+#                return HttpResponse(json.dumps(resp), content_type="application/json")
+#
+#            # Optional: prevent updating a product from another store
+#            if product.store != store:
+#                resp['msg'] = "You cannot update product of another store."
+#                return HttpResponse(json.dumps(resp), content_type="application/json")
+#
+#            # Update product fields
+#            product.category = category
+#            product.store = store
+#            product.unit = unit
+#            product.name = data['name']
+#            product.description = data['description']
+#            product.quantity = quantity
+#            product.cost_price = cost_price
+#            product.price = price
+#            product.status = data['status']
+#            product.expiry_date = exp_date
+#            product.save()
+#
+#        # =======================================
+#        # CREATE NEW PRODUCT
+#        # =======================================
+#        else:
+#            # Validate duplicate product names per store
+#            if Product.objects.filter(store=store, name=data['name']).exists():
+#                resp['msg'] = "A product with this name already exists in this store."
+#                return HttpResponse(json.dumps(resp), content_type="application/json")
+#
+#            # Generate unique product code
+#            code = generate_product_code()
+#            while Product.objects.filter(code=code).exists():
+#                code = generate_product_code()
+#
+#            # Create the product
+#            product = Product.objects.create(
+#                code=code,
+#                category=category,
+#                store=store,
+#                unit=unit,
+#                name=data['name'],
+#                description=data['description'],
+#                quantity=quantity,
+#                cost_price=cost_price,
+#                price=price,
+#                status=data['status'],
+#                expiry_date=exp_date
+#            )
+#
+#            # Create stock entry ONLY if quantity > 0
+#            if quantity > 0:
+#                StockEntry.objects.create(
+#                    product=product,
+#                    store=store,
+#                    quantity=quantity,
+#                    remaining_quantity=quantity,
+#                    cost_price=cost_price,
+#                    date_received=timezone.now().date()
+#                )
+#
+#        resp['status'] = 'success'
+#        messages.success(request, "Product saved successfully.")
+#
+#    except Exception as e:
+#        resp['status'] = 'failed'
+#        resp['msg'] = str(e)
+#
+#    return HttpResponse(json.dumps(resp), content_type="application/json")
+
+from decimal import Decimal, InvalidOperation
+from django.http import JsonResponse
+from django.utils import timezone
+from datetime import datetime
+
+
 def save_product(request):
     data = request.POST
-    resp = {'status': 'failed'}
-    product_id = data.get('id', '').strip()
+    resp = {"status": "failed"}
 
-    # --- Validate store ---
+    product_id = data.get("id", "").strip()
+
     try:
-        store = Store.objects.get(id=data.get('store_id'))
+        store = Store.objects.get(id=data.get("store_id"))
     except Store.DoesNotExist:
-        resp['msg'] = "Invalid store selected."
-        return HttpResponse(json.dumps(resp), content_type="application/json")
+        return JsonResponse({"status": "failed", "msg": "Invalid store selected."})
 
-    # --- Validate related models ---
-    category = Category.objects.filter(id=data.get('category_id')).first()
-    unit = Unit.objects.filter(id=data.get('unit')).first()
+    settings = store.settings  # ⭐ IMPORTANT
 
-    if not category:
-        resp['msg'] = "Invalid category."
-        return HttpResponse(json.dumps(resp), content_type="application/json")
+    # =========================================
+    # FEATURE-BASED VALIDATION
+    # =========================================
 
-    if not unit:
-        resp['msg'] = "Invalid unit selected."
-        return HttpResponse(json.dumps(resp), content_type="application/json")
-
-    # --- Fix expiration date ---
-    expiration_date = data.get('expiration_date')
+    category = None
+    unit = None
     exp_date = None
-    if expiration_date:
-        try:
-            exp_date = datetime.strptime(expiration_date, "%Y-%m-%d").date()
-        except ValueError:
-            resp['msg'] = "Invalid expiration date format."
-            return HttpResponse(json.dumps(resp), content_type="application/json")
 
+    # ---------- Category ----------
+    if settings.enable_categories:
+        category = Category.objects.filter(
+            id=data.get("category_id"), store=store
+        ).first()
+
+        if not category:
+            return JsonResponse({"status": "failed", "msg": "Invalid category."})
+
+    # ---------- Unit ----------
+    if settings.enable_units:
+        unit = Unit.objects.filter(
+            id=data.get("unit"), store=store
+        ).first()
+
+        if not unit:
+            return JsonResponse({"status": "failed", "msg": "Invalid unit selected."})
+
+    # ---------- Expiry ----------
+    if settings.enable_expiry:
+        expiration_date = data.get("expiration_date")
+        if expiration_date:
+            try:
+                exp_date = datetime.strptime(expiration_date, "%Y-%m-%d").date()
+            except ValueError:
+                return JsonResponse({"status": "failed", "msg": "Invalid expiration date format."})
+
+    # =========================================
+    # Numeric validation
+    # =========================================
     try:
-        quantity = int(data.get('stock', 0))
-        cost_price = Decimal(str(data.get('cost_price', 0)))
-        price = Decimal(str(data.get('price', 0)))
+        quantity = int(data.get("stock", 0))
+        cost_price = Decimal(str(data.get("cost_price", 0)))
+        price = Decimal(str(data.get("price", 0)))
 
         if quantity < 0:
-            resp['msg'] = "Quantity cannot be negative."
-            return HttpResponse(json.dumps(resp), content_type="application/json")
+            return JsonResponse({"status": "failed", "msg": "Quantity cannot be negative."})
 
-    except (ValueError, Decimal.InvalidOperation):
-        resp['msg'] = "Invalid numeric value."
-        return HttpResponse(json.dumps(resp), content_type="application/json")
+    except (ValueError, InvalidOperation):
+        return JsonResponse({"status": "failed", "msg": "Invalid numeric value."})
 
     try:
-        # =======================================
+
+        # =========================================
         # UPDATE PRODUCT
-        # =======================================
+        # =========================================
         if product_id.isnumeric() and int(product_id) > 0:
-            try:
-                product = Product.objects.get(id=product_id)
-            except Product.DoesNotExist:
-                resp['msg'] = "Product not found."
-                return HttpResponse(json.dumps(resp), content_type="application/json")
 
-            # Optional: prevent updating a product from another store
-            if product.store != store:
-                resp['msg'] = "You cannot update product of another store."
-                return HttpResponse(json.dumps(resp), content_type="application/json")
+            product = Product.objects.filter(id=product_id, store=store).first()
+            if not product:
+                return JsonResponse({"status": "failed", "msg": "Product not found."})
 
-            # Update product fields
             product.category = category
-            product.store = store
             product.unit = unit
-            product.name = data['name']
-            product.description = data['description']
+            product.expiry_date = exp_date
+            product.name = data.get("name")
+            product.description = data.get("description")
             product.quantity = quantity
             product.cost_price = cost_price
             product.price = price
-            product.status = data['status']
-            product.expiry_date = exp_date
+            product.status = data.get("status")
+
             product.save()
 
-        # =======================================
-        # CREATE NEW PRODUCT
-        # =======================================
+        # =========================================
+        # CREATE PRODUCT
+        # =========================================
         else:
-            # Validate duplicate product names per store
-            if Product.objects.filter(store=store, name=data['name']).exists():
-                resp['msg'] = "A product with this name already exists in this store."
-                return HttpResponse(json.dumps(resp), content_type="application/json")
 
-            # Generate unique product code
+            if Product.objects.filter(store=store, name=data.get("name")).exists():
+                return JsonResponse({
+                    "status": "failed",
+                    "msg": "A product with this name already exists in this store."
+                })
+
+            # unique code per store
             code = generate_product_code()
-            while Product.objects.filter(code=code).exists():
+            while Product.objects.filter(store=store, code=code).exists():
                 code = generate_product_code()
 
-            # Create the product
             product = Product.objects.create(
                 code=code,
-                category=category,
                 store=store,
+                category=category,
                 unit=unit,
-                name=data['name'],
-                description=data['description'],
+                name=data.get("name"),
+                description=data.get("description"),
                 quantity=quantity,
                 cost_price=cost_price,
                 price=price,
-                status=data['status'],
+                status=data.get("status"),
                 expiry_date=exp_date
             )
 
-            # Create stock entry ONLY if quantity > 0
+            # FIFO stock entry
             if quantity > 0:
                 StockEntry.objects.create(
                     product=product,
@@ -513,14 +659,12 @@ def save_product(request):
                     date_received=timezone.now().date()
                 )
 
-        resp['status'] = 'success'
         messages.success(request, "Product saved successfully.")
+        return JsonResponse({"status": "success"})
 
     except Exception as e:
-        resp['status'] = 'failed'
-        resp['msg'] = str(e)
+        return JsonResponse({"status": "failed", "msg": str(e)})
 
-    return HttpResponse(json.dumps(resp), content_type="application/json")
 
 
 def deduct_stock_fifo(product, quantity_needed):
@@ -787,91 +931,68 @@ def save_pos(request):
             amount_paid=tendered if is_credit else tendered_amount
         )
 
+        
         # --- Save Sale Items + FIFO Stock ---
         for item in cart_items:
-            product = item['product']
-            qty_to_deduct = item['qty']
-            price = item['price']
+           product = item['product']
+           qty_to_deduct = item['qty']
+           price = item['price']
+        
+           # Save SaleItem
+           SalesItem.objects.create(
+               sale=sale,
+               product=product,
+               qty=qty_to_deduct,
+               price=price,
+               unit=product.unit if product.unit else None
+           )
+        
+           original_qty = qty_to_deduct  # keep for ledger
+        
+           # FIFO stock deduction
+           stock_entries = StockEntry.objects.select_for_update().filter(
+               product=product,
+               store=current_store,
+               remaining_quantity__gt=0
+           ).order_by('date_received')
+        
+           for entry in stock_entries:
+               if qty_to_deduct <= 0:
+                   break
+        
+               deduct = min(entry.remaining_quantity, qty_to_deduct)
+               entry.remaining_quantity -= deduct
+               entry.save()
+               qty_to_deduct -= deduct
+        
+           if qty_to_deduct > 0:
+               raise ValueError(f"Insufficient stock for {product.name}.")
+        
+           # ✅🔥 CREATE LEDGER ENTRY (THIS WAS MISSING)
+           StockMovement.objects.create(
+               product=product,
+               store=current_store,
+               movement_type="SALE",
+               quantity=-original_qty,
+               reference=f"SALE-{sale.id}",
+               created_by=user
+           )
+        
+           # ✅ update product stock cache
+           new_stock = StockEntry.objects.filter(
+               product=product,
+               store=current_store
+           ).aggregate(total=Sum('remaining_quantity'))['total'] or 0
+        
+           product.stock = new_stock
+           product.save()
 
-            # Save SaleItem
-            SalesItem.objects.create(
-                sale=sale,
-                product=product,
-                qty=qty_to_deduct,
-                price=price,
-                unit=product.unit if product.unit else None
-            )
-
-            # FIFO stock deduction
-            stock_entries = StockEntry.objects.select_for_update().filter(
-                product=product,
-                store=current_store,
-                remaining_quantity__gt=0
-            ).order_by('date_received')
-
-            for entry in stock_entries:
-                if qty_to_deduct <= 0:
-                    break
-
-                deduct = min(entry.remaining_quantity, qty_to_deduct)
-                entry.remaining_quantity -= deduct
-                entry.save()
-                qty_to_deduct -= deduct
-
-            if qty_to_deduct > 0:
-                raise ValueError(f"Insufficient stock for {product.name}.")
 
         return JsonResponse({'status': 'success', 'sale_id': sale.id})
 
     except Exception as e:
         return JsonResponse({'status': 'failed', 'msg': str(e)})
 
-#def save_pos(request):
-#    try:
-#        cart_items = []
-#        product_ids = request.POST.getlist('product_id[]')
-#        qtys = request.POST.getlist('qty[]')
-#        current_store = Store.objects.filter(owner=request.user).first()
-#
-#
-#        if not product_ids:
-#            return JsonResponse({'status': 'failed', 'msg': 'No products provided'})
-#
-#        print(f"Received product_ids: {product_ids}")
-#        print(f"Received qtys: {qtys}")
-#        print(f"Store: {current_store}")
-#
-#        for idx, pid in enumerate(product_ids):
-#            cart_items.append({
-#                'product_id': int(pid),
-#                'qty': float(qtys[idx]),
-#            })
-#
-#        # Calculate totals manually (add your logic here if needed)
-#        sub_total = Decimal('0.0')
-#        tax = Decimal('0.0')
-#        tax_amount = Decimal('0.0')
-#        grand_total = Decimal(request.POST.get('grand_total', '0.0'))
-#        tendered_amount = Decimal(request.POST.get('tendered_amount', '0.0'))
-#        amount_change = tendered_amount - grand_total
-#
-#        print(f"Cart Items: {cart_items}")
-#
-#        sale = process_checkout(
-#            cart_items=cart_items,
-#            store=current_store,
-#            user=request.user,
-#            sub_total=sub_total,
-#            tax=tax,
-#            tax_amount=tax_amount,
-#            grand_total=grand_total,
-#            tendered_amount=tendered_amount,
-#            amount_change=amount_change
-#        )
-#
-#        return JsonResponse({'status': 'success', 'sale_id': sale.id})
-#    except Exception as e:
-#        return JsonResponse({'status': 'failed', 'msg': str(e)})
 
 
 
@@ -1211,6 +1332,7 @@ def create_store_and_manager(request):
 from django.utils import timezone
 from datetime import datetime
 from .models import Sales, SalesItem, Expenditure, Product
+from django.core.paginator import Paginator
 
 @login_required
 @admin_manager_only
@@ -1252,6 +1374,11 @@ def report_view(request):
     # Get related sale items
     sale_items = SalesItem.objects.filter(sale__in=sales)
 
+    # Show 10 transactions per page
+    paginator = Paginator(sales, 10) 
+    page_number = request.GET.get('page')
+    sales_page_obj = paginator.get_page(page_number)
+
     # Compute total cost of products sold
     total_cost = sum(
         Decimal(item.qty) * Decimal(item.product.cost_price)
@@ -1284,6 +1411,7 @@ def report_view(request):
         'include_expense': include_expense,
         'months': months,
         'monthly_expenses': monthly_expenses,
+        'sales': sales_page_obj,
     }
 
     return render(request, 'posApp/report.html', context)
@@ -1489,13 +1617,85 @@ from .models import Product, StockEntry, SalesItem, Sales, Unit
 
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from .models import Sales, SalesItem, Product, StockEntry
+#from .models import Sales, SalesItem, Product, StockEntry
+#
+#
+#
+#@transaction.atomic
+#def process_checkout(cart_items, store, user, sub_total, tax, tax_amount, grand_total, tendered_amount, amount_change):
+#    # Create the main Sales record
+#    sale = Sales.objects.create(
+#        store=store,
+#        cashier=user,
+#        sub_total=sub_total,
+#        tax=tax,
+#        tax_amount=tax_amount,
+#        grand_total=grand_total,
+#        tendered_amount=tendered_amount,
+#        amount_change=amount_change
+#    )
+#
+#    for item in cart_items:
+#        product_id = item['product_id']
+#        qty_to_deduct = Decimal(str(item['qty']))
+#
+#        try:
+#            product = Product.objects.get(id=product_id, store=store)
+#        except Product.MultipleObjectsReturned:
+#            raise ValueError(f"Multiple products found for ID {product_id} in store '{store.name}'")
+#        except Product.DoesNotExist:
+#            raise ValueError(f"Product ID {product_id} does not exist in store '{store.name}'")
+#
+#        price = Decimal(str(product.price))
+#
+#        # Get FIFO stock entries
+#        stock_entries = StockEntry.objects.select_for_update().filter(
+#            product=product,
+#            store=store,
+#            remaining_quantity__gt=0
+#        ).order_by('date_received')
+#
+#        total_available = sum(entry.remaining_quantity for entry in stock_entries)
+#        if total_available < qty_to_deduct:
+#            raise ValueError(f"Not enough stock for '{product.name}' in store '{store.name}'")
+#
+#        # Deduct stock using FIFO
+#        remaining_qty = qty_to_deduct
+#        for entry in stock_entries:
+#            if remaining_qty <= 0:
+#                break
+#            used_qty = min(entry.remaining_quantity, remaining_qty)
+#            entry.remaining_quantity -= used_qty
+#            entry.save()
+#            remaining_qty -= used_qty
+#
+#        # Record the sale item
+#        SalesItem.objects.create(
+#            product=product,
+#            qty=qty_to_deduct,
+#            price=price,
+#            total=qty_to_deduct * price,
+#            sale=sale
+#        )
+#
+#        # Recalculate product stock from StockEntry
+#        new_total_stock = StockEntry.objects.filter(
+#            product=product,
+#            store=store
+#        ).aggregate(total_remaining=Sum('remaining_quantity'))['total_remaining'] or 0
+#
+#        product.stock = new_total_stock
+#        product.save()
+#
+#return sale
 
+
+from .models import Product, StockEntry, Sales, SalesItem, StockMovement
 
 
 @transaction.atomic
 def process_checkout(cart_items, store, user, sub_total, tax, tax_amount, grand_total, tendered_amount, amount_change):
-    # Create the main Sales record
+
     sale = Sales.objects.create(
         store=store,
         cashier=user,
@@ -1511,37 +1711,31 @@ def process_checkout(cart_items, store, user, sub_total, tax, tax_amount, grand_
         product_id = item['product_id']
         qty_to_deduct = Decimal(str(item['qty']))
 
-        try:
-            product = Product.objects.get(id=product_id, store=store)
-        except Product.MultipleObjectsReturned:
-            raise ValueError(f"Multiple products found for ID {product_id} in store '{store.name}'")
-        except Product.DoesNotExist:
-            raise ValueError(f"Product ID {product_id} does not exist in store '{store.name}'")
-
+        product = Product.objects.get(id=product_id, store=store)
         price = Decimal(str(product.price))
 
-        # Get FIFO stock entries
         stock_entries = StockEntry.objects.select_for_update().filter(
             product=product,
             store=store,
             remaining_quantity__gt=0
         ).order_by('date_received')
 
-        total_available = sum(entry.remaining_quantity for entry in stock_entries)
+        total_available = sum(e.remaining_quantity for e in stock_entries)
         if total_available < qty_to_deduct:
-            raise ValueError(f"Not enough stock for '{product.name}' in store '{store.name}'")
+            raise ValueError(f"Not enough stock for '{product.name}'")
 
-        # Deduct stock using FIFO
+        # FIFO deduction
         remaining_qty = qty_to_deduct
         for entry in stock_entries:
             if remaining_qty <= 0:
                 break
+
             used_qty = min(entry.remaining_quantity, remaining_qty)
             entry.remaining_quantity -= used_qty
             entry.save()
             remaining_qty -= used_qty
 
-        # Record the sale item
+        # create sale item
         SalesItem.objects.create(
             product=product,
             qty=qty_to_deduct,
@@ -1550,7 +1744,17 @@ def process_checkout(cart_items, store, user, sub_total, tax, tax_amount, grand_
             sale=sale
         )
 
-        # Recalculate product stock from StockEntry
+        # 🔥 create ledger movement (VERY IMPORTANT)
+        StockMovement.objects.create(
+            product=product,
+            store=store,
+            movement_type="SALE",
+            quantity=-qty_to_deduct,
+            reference=f"SALE-{sale.id}",
+            created_by=user
+        )
+
+        # update product stock
         new_total_stock = StockEntry.objects.filter(
             product=product,
             store=store
@@ -1560,8 +1764,6 @@ def process_checkout(cart_items, store, user, sub_total, tax, tax_amount, grand_
         product.save()
 
     return sale
-
-
 
 
 
@@ -1765,3 +1967,71 @@ def change_user_password(request):
 
     return render(request, "posApp/change_user_password.html", {"form": form})
 
+
+
+
+
+
+from .forms import StoreSettingsForm
+from .models import StoreUser, StoreSettings
+
+
+@login_required
+def store_settings(request):
+
+    # -----------------------------------
+    # SAFE store access
+    # -----------------------------------
+    store = Store.objects.filter(owner=request.user).first()
+
+    if not store:
+        messages.error(request, "No store assigned to your account.")
+        return redirect("pos-page")  # change if needed
+
+
+    # -----------------------------------
+    # SAFE settings access (important)
+    # -----------------------------------
+    settings, _ = StoreSettings.objects.get_or_create(store=store)
+
+
+    # -----------------------------------
+    # Form handling
+    # -----------------------------------
+    if request.method == "POST":
+        form = StoreSettingsForm(request.POST, instance=settings)
+
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Settings updated successfully")
+            return redirect("store-settings")
+
+    else:
+        form = StoreSettingsForm(instance=settings)
+
+
+    return render(request, "posApp/settings.html", {
+        "form": form,
+        "settings": settings,  # optional if template needs it
+    })
+
+
+
+def stock_ledger(request, product_id, store_id):
+    product = get_object_or_404(Product, id=product_id)
+    store = get_object_or_404(Store, id=store_id)
+
+    movements = product.movements.filter(store=store)
+
+    balance = 0
+    rows = []
+
+    for m in movements:
+        balance += m.quantity
+        rows.append((m, balance))
+
+    return render(request, "posApp/stock_ledger.html", {
+        "product": product,
+        "rows": rows,
+        "store": store
+    })

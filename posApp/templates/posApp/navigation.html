@@ -19,6 +19,7 @@
                     <a class="mdc-drawer-link" href="{% url 'home-page' %}">
                         <i class="material-icons mdc-list-item__start-detail">home</i> Home
                     </a>
+
                 </div>
 
                 <div class="mdc-list-group">
@@ -44,21 +45,25 @@
         </a>
 </div>
 
-
-    <div class="mdc-list-item mdc-drawer-item">
-        <a class="mdc-drawer-link" href="{% url 'category-page' %}">
-            <i class="material-icons mdc-list-item__start-detail">list</i>
-            Categories
-        </a>
-    </div>
-
-    <div class="mdc-list-item mdc-drawer-item">
-        <a class="mdc-drawer-link" href="{% url 'unit-page' %}">
-            <i class="material-icons mdc-list-item__start-detail">straighten</i>
-            Units
-        </a>
-    </div>
+{% if store_settings and store_settings.enable_categories %}
+<div class="mdc-list-item mdc-drawer-item">
+    <a class="mdc-drawer-link" href="{% url 'category-page' %}">
+        <i class="material-icons mdc-list-item__start-detail">list</i>
+        Categories
+    </a>
 </div>
+{% endif %}
+
+{% if store_settings and store_settings.enable_units %}
+<div class="mdc-list-item mdc-drawer-item">
+    <a class="mdc-drawer-link" href="{% url 'unit-page' %}">
+        <i class="material-icons mdc-list-item__start-detail">straighten</i>
+        Units
+    </a>
+</div>
+{% endif %}
+
+<!--</div>-->
 
 
                 <hr class="border-secondary opacity-25">
@@ -112,6 +117,17 @@
                     <i class="material-icons mdc-list-item__start-detail">assignment</i> Credit Report
                   </a>
                 </div>
+
+    
+
+
+                <div class="mdc-list-item mdc-drawer-item">
+    <a class="mdc-drawer-link" href="{% url 'store-settings' %}">
+        <i class="material-icons mdc-list-item__start-detail">settings</i>
+        <span class="mdc-list-item__text">Settings</span>
+    </a>
+</div>
+
 
             </nav>
         </div>

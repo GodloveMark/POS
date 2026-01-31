@@ -1,0 +1,131 @@
+{% extends 'posApp/base.html' %}
+{% load humanize %}
+
+{% block pageContent %}
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
+  <div class="mdc-card py-3 px-4">
+    <h4 class="mb-4">Business Report</h4>
+
+    <!-- Filter Form -->
+    <form method="get" class="row g-3 align-items-end mb-4">
+      <div class="col-md-3">
+        <label for="start_date" class="form-label">Start Date</label>
+        <input type="date" id="start_date" name="start_date" class="form-control" value="{{ request.GET.start_date }}">
+      </div>
+      <div class="col-md-3">
+        <label for="end_date" class="form-label">End Date</label>
+        <input type="date" id="end_date" name="end_date" class="form-control" value="{{ request.GET.end_date }}">
+      </div>
+      <div class="col-md-2">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="include_tax" id="include_tax" {% if include_tax %}checked{% endif %}>
+          <label class="form-check-label" for="include_tax">Include Tax</label>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="include_expense" id="include_expense" {% if include_expense %}checked{% endif %}>
+          <label class="form-check-label" for="include_expense">Include Business Expenses</label>
+        </div>
+      </div>
+      <div class="col-md-1">
+        <button type="submit" class="btn btn-primary w-100">Filter</button>
+      </div>
+    </form>
+
+    <!-- Summary -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title">Summary ({{ start_date }} to {{ end_date }})</h5>
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item">Total Sales: <strong>{{ total_sales|intcomma }}</strong></li>
+          <li class="list-group-item">Cost of Goods Sold: <strong>{{ total_cost|intcomma }}</strong></li>
+          {% if include_tax %}
+          <li class="list-group-item">Tax Included: <strong>{{ tax_amount|intcomma }}</strong></li>
+          {% endif %}
+          {% if include_expense %}
+          <li class="list-group-item">Business Expenses: <strong>{{ total_expense|intcomma }}</strong></li>
+          {% endif %}
+          <li class="list-group-item">Net Profit: <strong class="text-success">{{ profit|intcomma }}</strong></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Sales Transactions Table -->
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Sales Transactions</strong>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-striped table-bordered mb-0">
+          <thead>
+            <tr>
+              <th class="text-center">Date</th>
+              <th class="text-center">Transaction Code</th>
+              <th class="text-end">Grand Total</th>
+              <th class="text-end">Tax</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for sale in sales %}
+            <tr>
+              <td class="text-center">{{ sale.date_added|date:"M d, Y" }}</td>
+              <td class="text-center">{{ sale.code }}</td>
+              <td class="text-end">{{ sale.grand_total|intcomma }}</td>
+              <td class="text-end">{{ sale.tax_amount|intcomma }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4" class="text-center text-muted">No transactions found for the selected period.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="card mt-4">
+      <div class="card-body">
+        <h5 class="card-title">Monthly Expenditure Chart</h5>
+        <canvas id="expenditureChart" height="100"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const ctx = document.getElementById('expenditureChart').getContext('2d');
+  const expenditureChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: {{ months|safe }},
+      datasets: [{
+        label: 'Monthly Expenditure',
+        data: {{ monthly_expenses|safe }},
+        backgroundColor: 'rgba(255, 99, 132, 0.5)',
+        borderColor: 'rgba(255, 99, 132, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          display: false
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: function(value) {
+              return new Intl.NumberFormat().format(value);
+            }
+          }
+        }
+      }
+    }
+  });
+</script>
+{% endblock pageContent %}

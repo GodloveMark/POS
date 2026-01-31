@@ -60,6 +60,9 @@ urlpatterns = [
 
     path('create-cashier/', views.create_cashier, name='create-cashier'),
     path('change-user-password/', views.change_user_password, name='change-user-password'),
+    path("settings/", views.store_settings, name="store-settings"),
+    path("ledger/<int:product_id>/<int:store_id>/", views.stock_ledger, name="stock_ledger"),
+
 
 
     # path('employees', views.employees, name="employee-page"),

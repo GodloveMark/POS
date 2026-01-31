@@ -1,143 +1,266 @@
-{% extends "posApp/base.html" %} {% block pageContent %}
+{% extends "posApp/base.html" %} 
+{% block pageContent %}
+<style>
+    :root {
+        --pos-bg: #f4f7fe;
+        --pos-primary: #4361ee;
+        --pos-secondary: #718096;
+        --pos-dark: #1a202c;
+        --pos-success: #2dce89;
+    }
+
+    /* Professional Background & Card */
+    .mdc-card {
+        border: none;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+        border-radius: 16px !important;
+        background: #ffffff;
+    }
+
+    .card-title {
+        font-weight: 800;
+        color: var(--pos-dark);
+        font-size: 1.25rem;
+    }
+
+    /* Fieldset Modernization */
+    fieldset {
+        border: 1px solid #edf2f7;
+        border-radius: 12px;
+        padding: 1.25rem !important;
+        background-color: #fafbfc;
+        margin-bottom: 1.5rem;
+    }
+
+    legend {
+        float: none;
+        width: auto;
+        padding: 0 12px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--pos-primary);
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+    }
+
+    /* Sidebar - Premium Dark Mode */
+    .summary-sidebar {
+        background: #1e293b !important; /* Modern Slate-900 */
+        border-radius: 0 12px 12px 0;
+        color: white;
+        position: relative;
+    }
+
+    .summary-sidebar dt {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #94a3b8;
+        text-transform: uppercase;
+        margin-top: 1.2rem;
+    }
+
+    /* Glassmorphism for display boxes */
+    .summary-sidebar .bg-light {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px !important;
+        color: #f8fafc !important;
+        transition: all 0.3s ease;
+    }
+    
+    .summary-sidebar .bg-light:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+    }
+
+    /* High-Contrast Grand Total */
+    .grand-total-box {
+        background: linear-gradient(135deg, var(--pos-primary), #3a0ca3) !important;
+        border: none !important;
+        padding: 1.5rem !important;
+    }
+
+    /* Table Refinement */
+    .table { border-collapse: separate; border-spacing: 0 8px; }
+    .table thead th {
+        background-color: transparent;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--pos-secondary);
+        border: none;
+    }
+    .table tbody tr {
+        transition: transform 0.2s ease;
+        background: #ffffff;
+    }
+    .table tbody tr:hover {
+        transform: scale(1.01);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    /* Modern Inputs */
+    .form-control {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 0.6rem 1rem;
+    }
+    .form-control:focus {
+        border-color: var(--pos-primary);
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+    }
+
+    /* Checkout Button */
+    #check_out {
+        background: var(--pos-success);
+        border: none;
+        height: 60px;
+        font-size: 1.1rem;
+        letter-spacing: 1px;
+        transition: all 0.3s ease;
+    }
+    #check_out:hover {
+        filter: brightness(1.1);
+        transform: translateY(-2px);
+    }
+</style>
+
 <div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
-    <div class="mdc-card py-2">
+    <div class="mdc-card py-3 px-4">
         <div class="d-flex justify-content-between align-items-center">
-            <h4 class="card-title mb-0">Point of Sales</h4>
+            <h4 class="card-title mb-0">
+                <i class="mdi mdi-shopping text-primary me-2"></i>Checkout Dashboard
+            </h4>
+            <span class="badge bg-soft-primary text-primary px-3 py-2">Terminal #01</span>
         </div>
     </div>
 </div>
+
 <div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
-    <div class="mdc-card">
+    <div class="mdc-card p-4">
         <form action="" id="pos-form">
             <fieldset>
-                <legend>Add Products</legend>
-                <div class="row align-items-end">
+                <legend>Item Selection</legend>
+                <div class="row align-items-end g-3">
                     <div class="col-lg-5 col-md-5 col-sm-12">
-                        <div class="form-group mb-3">
-                            <label for="product-id">Select Product</label>
-<select id="product-id" class="form-control">
-  <option value="">Select product</option>
-  {% for product in products %}
-    <option value="{{ product.id }}"
+                        <div class="form-group">
+                            <label for="product-id" class="form-label fw-bold small text-muted">SEARCH PRODUCT</label>
+                            <select id="product-id" class="form-control select2">
+                                <option value="">Type product name...</option>
+                                {% for product in products %}
+                                <option value="{{ product.id }}"
             data-price="{{ product.price }}"
             data-unit="{{ product.unit.name }}"
             data-stock="{{ product.total_remaining_quantity|default:0 }}">
       {{ product.name }} ({{ product.unit.name }}) - {{ product.price }} (Stock: {{ product.total_remaining_quantity|default:0 }})
     </option>
-  {% endfor %}
-</select>
-
-
-<!--<small id="stock-info" class="text-muted"></small>--->
-
+                                {% endfor %}
+                            </select>
                         </div>
                     </div>
-                    <div class="col-lg-3 col-md-5 col-md-12">
-                        <div class="form-group mb-3">
-                            <label for="product-qty">Qty</label>
-                            <input type="number" class="form-control form-control-sm text-center" step="any" id="product-qty" value="1">
+                    <div class="col-lg-2 col-md-3 col-sm-12">
+                        <div class="form-group">
+                            <label for="product-qty" class="form-label fw-bold small text-muted">QUANTITY</label>
+                            <input type="number" class="form-control text-center fw-bold" step="any" id="product-qty" value="1">
                         </div>
                     </div>
-                    <div class="col-lg-4 col-md-2 col-md-12">
-
-                        <div class="form-group mb-3">
-
-                            <button class="btn btn-light btn-sm bg-gradient border rounded-0 text-start" type="button" id="add_item"><i class="mdi mdi-plus"></i> Add Item</button>
-
-  <input class="form-check-input" type="checkbox" id="apply_tax">
-  <label class="form-check-label" for="apply_tax">
-    Apply Tax
-  </label>
-
-
-
+                    <div class="col-lg-5 col-md-4 col-sm-12 text-end">
+                        <div class="d-flex align-items-center justify-content-end">
+                            <div class="form-check form-switch me-4">
+                                <input class="form-check-input" type="checkbox" id="apply_tax">
+                                <label class="form-check-label small fw-bold text-muted" for="apply_tax">TAX</label>
+                            </div>
+                            <button class="btn btn-primary px-4 py-2 fw-bold" type="button" id="add_item">
+                                <i class="mdi mdi-cart-plus me-1"></i> ADD TO BILL
+                            </button>
                         </div>
                     </div>
-
                 </div>
             </fieldset>
-            <fieldset>
-                <div class="d-flex w-100" id="POS-field">
-                    <div class="col-8 bg-gradient bg-light border h-100">
-                        <table class="table table-bordered">
-                            <colgroup>
-                                <col width="5%">
-                                <col width="15%">
-                                <col width="40%">
-                                <col width="20%">
-                                <col width="20%">
-                            </colgroup>
+
+            <fieldset class="p-0 border-0">
+                <div class="d-flex w-100 shadow-sm" id="POS-field" style="min-height: 500px; border-radius: 12px; overflow: hidden;">
+                    <div class="col-8 bg-white p-3 h-100">
+                        <table class="table align-middle mb-0">
                             <thead>
-                                <tr class="bg-dark bg-gradient bg-opacity-50 text-light">
-                                    <th class="py-1 px-2 text-center  text-light"></th>
-                                    <th class="py-1 px-2 text-center  text-light">QTY</th>
-                                    <th class="py-1 px-2 text-center  text-light">Product</th>
-                                    <th class="py-1 px-2 text-center  text-light">Price</th>
-                                    <th class="py-1 px-2 text-center  text-light">Total</th>
+                                <tr>
+                                    <th width="5%"></th>
+                                    <th width="15%" class="text-center">QTY</th>
+                                    <th width="40%">PRODUCT</th>
+                                    <th width="20%" class="text-end">PRICE</th>
+                                    <th width="20%" class="text-end">TOTAL</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                            </tbody>
+                            <tbody class="border-top-0">
+                                </tbody>
                         </table>
                     </div>
-                    <div class="col-4 bg-gradient bg-dark bg-opacity-50 border h-100">
-                        <div class="col-12 py-4 px-2">
-                            <dl>
-                              <dt class="h4 fw-bold text-light">Sub Total</dt>
-                              <dd class="text-end py-1 px-2 rounded-0 bg-light">
+
+                    <div class="col-4 summary-sidebar p-4 h-100">
+                        <h6 class="text-white fw-bold mb-4">Payment Summary</h6>
+                        <dl class="mb-0">
+                            <dt>Sub Total</dt>
+                            <dd class="text-end py-2 px-3 bg-light mt-1">
                                 <input type="hidden" name="sub_total" value="0">
-                                <span class="h3 fw-bold" id="sub_total">0.00</span>
-                              </dd>
+                                <span class="h5 fw-bold mb-0" id="sub_total">0.00</span>
+                            </dd>
 
-                              <dt class="h4 fw-bold text-light">Tax Inclusive (%)</dt>
-                              <dd>
-                                <input type="number" class="form-control form-control-lg rounded-0 text-end"
+                            <div class="row g-2 align-items-center mt-3">
+                                <div class="col-6">
+                                    <dt class="mt-0">Tax %</dt>
+                                    <input type="number" class="form-control bg-transparent text-white border-secondary text-end mt-1"
                                        step="any" min="0" max="100" name="tax" value="0">
-                              </dd>
+                                </div>
+                                <div class="col-6">
+                                    <dt class="mt-0">Tax Amt</dt>
+                                    <div class="py-2 px-2 bg-light text-end mt-1 rounded">
+                                        <input type="hidden" name="tax_amount" value="0">
+                                        <span class="fw-bold" id="tax_amount">0.00</span>
+                                    </div>
+                                </div>
+                            </div>
 
-                              <dt class="h4 fw-bold text-light">Tax Amount</dt>
-                              <dd class="text-end py-1 px-2 rounded-0 bg-light">
-                                <input type="hidden" name="tax_amount" value="0">
-                                <span class="h3 fw-bold" id="tax_amount">0.00</span>
-                              </dd>
-
-                              <dt class="h4 fw-bold text-light">Grand Total</dt>
-                              <dd class="text-end py-1 px-2 rounded-0 bg-light">
+                            <dt class="mt-4">Grand Total</dt>
+                            <dd class="text-end grand-total-box rounded shadow-lg mt-1">
                                 <input type="hidden" name="grand_total" value="0">
                                 <input type="hidden" name="tendered_amount" value="0">
                                 <input type="hidden" name="amount_change" value="0">
-                                <span class="h3 fw-bold" id="grand_total">0.00</span>
-                              </dd>
-                            </dl>
-
-                        </div>
+                                <span class="h1 fw-bold mb-0 text-white" id="grand_total">0.00</span>
+                            </dd>
+                        </dl>
+                        
+                        <button class="btn btn-success btn-lg w-100 mt-5 fw-bold shadow" type="button" id="check_out">
+                            PROCEED TO CHECKOUT
+                        </button>
                     </div>
                 </div>
             </fieldset>
-            <div class="row">
-                <div class="col-md-12 text-end">
-                    <button class="btn btn-primary btn-sm rounded-0" type="button" id="check_out"><i class="mdi mdi-save"></i> Checkout</button>
-                </div>
-            </div>
         </form>
     </div>
 </div>
+
 <noscript id="item-clone">
-    <tr>
-        <td class="px-2 py-1 text-center">
-            <button class="btn btn-sm btn-outline-danger rounded-0 rem-item" type="button"><i class="mdi mdi-close"></i></button>
+    <tr class="shadow-none">
+        <td class="text-center">
+            <button class="btn btn-link text-danger rem-item p-0" type="button">
+                <i class="mdi mdi-minus-circle h5 mb-0"></i>
+            </button>
         </td>
-        <td class="px-2 py-1">
+        <td>
             <input type="hidden" name="product_id[]">
             <input type="hidden" name="price[]">
-            <input type="number" name="qty[]" min="0" class="form-control form-control-sm rounded-0 text-center">
+            <input type="number" name="qty[]" min="0" class="form-control form-control-sm text-center border-0 bg-light fw-bold">
         </td>
-        <td class="px-2 py-1 product_name text-start"></td>
-        <td class="px-2 py-1 product_unit text-start"></td>
-        <td class="px-2 py-1 product_price text-end"></td>
-        <td class="px-2 py-1 product_total text-end"></td>
+        <td>
+            <div class="product_name fw-bold text-dark"></div>
+            <small class="product_unit text-primary fw-bold" style="font-size: 0.65rem;"></small>
+        </td>
+        <td class="text-end product_price text-muted"></td>
+        <td class="text-end product_total fw-bold text-primary"></td>
     </tr>
-</noscript> {% endblock pageContent %} {% block ScriptBlock %}
+</noscript>
+
+
+{% endblock pageContent %} {% block ScriptBlock %}
 <script>
     var product_json = '{{ product_json }}'
     if (product_json == "" || product_json == "{}") {
@@ -354,5 +477,45 @@ $('#add_item').click(function () {
 
         // Proceed to add the item to the cart (your existing logic)
   //  });
+
+
+  $(document).keydown(function(e) {
+    // F2: Focus Product Selection
+    if (e.which == 113) { 
+        e.preventDefault();
+        $('#product-id').select2('open');
+    }
+
+    // F4: Toggle Tax
+    if (e.which == 115) {
+        e.preventDefault();
+        $('#apply_tax').prop('checked', !$('#apply_tax').prop('checked')).trigger('change');
+    }
+
+    // F10: Checkout
+    if (e.which == 121) {
+        e.preventDefault();
+        $('#check_out').click();
+    }
+
+    // ESC: Close Select2 or Clear Selection
+    if (e.which == 27) {
+        if ($('#product-id').data('select2').isOpen()) {
+            $('#product-id').select2('close');
+        } else {
+            $('#product-id').val('').trigger('change');
+            $('#product-qty').val(1);
+        }
+    }
+
+    // ENTER: Add item if quantity field is focused
+    if (e.which == 13 && $('#product-qty').is(':focus')) {
+        e.preventDefault();
+        $('#add_item').click();
+    }
+});
+
+// Helper to let the user know shortcuts are available
+console.log("POS Shortcuts Loaded: F2: Search, F4: Tax, F10: Checkout");
 </script>
 {% endblock ScriptBlock %}
