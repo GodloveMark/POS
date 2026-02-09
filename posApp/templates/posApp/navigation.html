@@ -1,4 +1,32 @@
 {% load static %}
+
+<style>
+    /* target the link inside the drawer item */
+    .mdc-drawer-item .mdc-drawer-link {
+        color: rgba(255, 255, 255, 0.8) !important; /* Default light text */
+        transition: background 0.2s, color 0.2s;
+    }
+
+    /* Fix visibility on hover */
+    .mdc-drawer-item:hover, 
+    .mdc-drawer-link:hover {
+        background-color: rgba(255, 255, 255, 0.1) !important; /* Subtle light highlight */
+        color: #ffffff !important; /* Ensure text stays white */
+        text-decoration: none;
+    }
+
+    /* Ensure icons follow the same rule */
+    .mdc-drawer-link:hover i {
+        color: #ffffff !important;
+    }
+
+    /* Prevent the MDC default white background if active */
+    .mdc-list-item--activated, 
+    .mdc-list-item:hover {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+    }
+</style>
+
 <aside class="mdc-drawer mdc-drawer--dismissible mdc-drawer--open bg-dark bg-gradient">
     <div class="mdc-drawer__header border-bottom border-light">
         <a href="{% url 'home-page' %}" class="brand-logo text-decoration-none">

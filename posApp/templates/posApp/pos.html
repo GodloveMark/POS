@@ -228,7 +228,7 @@
                             </dd>
                         </dl>
                         
-                        <button class="btn btn-success btn-lg w-100 mt-5 fw-bold shadow" type="button" id="check_out">
+                        <button class="btn btn-success btn-lg w-100 mt-5 fw-bold shadow" type="submit" id="check_out">
                             PROCEED TO CHECKOUT
                         </button>
                     </div>
@@ -262,24 +262,116 @@
 
 {% endblock pageContent %} {% block ScriptBlock %}
 <script>
-    var product_json = '{{ product_json }}'
-    if (product_json == "" || product_json == "{}") {
-        product_json = {}
-    } else {
-        product_json = product_json.replaceAll('&quot;', '"')
-        product_json = $.parseJSON(product_json)
-    }
-    var prod_arr = {}
-    if (Object.keys(product_json).length > 0) {
-        Object.keys(product_json).map(k => {
-            prod_arr[product_json[k].id] = product_json[k]
-        })
-    }
 
-    function calc() {
+///////////////////////////////////////////////////////////
+// GLOBAL PRODUCT DATA
+///////////////////////////////////////////////////////////
+
+var product_json = '{{ product_json }}'
+
+if (product_json == "" || product_json == "{}") {
+    product_json = {}
+} else {
+    product_json = product_json.replaceAll('&quot;', '"')
+    product_json = $.parseJSON(product_json)
+}
+
+var prod_arr = {}
+if (Object.keys(product_json).length > 0) {
+    Object.keys(product_json).map(k => {
+        prod_arr[product_json[k].id] = product_json[k]
+    })
+}
+
+
+///////////////////////////////////////////////////////////
+// ONLINE / OFFLINE ENGINE  (GLOBAL)
+///////////////////////////////////////////////////////////
+
+function sendOnline(fd){
+    return $.ajax({
+        headers: { "X-CSRFToken": '{{csrf_token}}' },
+        url: "{% url 'save-pos' %}",
+        data: fd,
+        cache: false,
+        contentType: false,
+        processData: false,
+        method: 'POST',
+        dataType: 'json'
+    });
+}
+
+function saveOffline(fd){
+
+    let obj = {};
+    fd.forEach((v,k)=>{ obj[k]=v });
+
+    let queue = JSON.parse(localStorage.getItem('pos_queue') || '[]');
+    queue.push(obj);
+
+    localStorage.setItem('pos_queue', JSON.stringify(queue));
+
+    console.log("Saved offline ✓");
+
+    end_loader();
+    alert("Saved offline ✓ Will sync automatically when online.");
+}
+
+
+// SAFE SYNC (no data loss)
+function syncSales(){
+
+    let queue = JSON.parse(localStorage.getItem('pos_queue') || '[]');
+
+    if(queue.length === 0) return;
+
+    console.log("Syncing offline sales...");
+
+    let newQueue = [];
+
+    queue.forEach(function(item){
+
+        let fd = new FormData();
+
+        for(let k in item){
+            fd.append(k, item[k]);
+        }
+
+        sendOnline(fd)
+        .done(function(resp){
+            if(resp.status === 'success'){
+                console.log("Synced ✓");
+            }else{
+                newQueue.push(item);
+            }
+        })
+        .fail(function(){
+            newQueue.push(item);
+        });
+
+    });
+
+    localStorage.setItem('pos_queue', JSON.stringify(newQueue));
+}
+
+
+// auto sync when online
+window.addEventListener('online', syncSales);
+
+// try sync on load too
+syncSales();
+
+
+///////////////////////////////////////////////////////////
+// CALCULATION
+///////////////////////////////////////////////////////////
+
+function calc() {
+
     let sub_total = 0;
 
     $('#POS-field table tbody tr').each(function() {
+
         let price = parseFloat($(this).find('[name="price[]"]').val()) || 0;
         let qtyInput = $(this).find('[name="qty[]"]');
         let qty = parseFloat(qtyInput.val()) || 0;
@@ -292,230 +384,156 @@
         }
 
         let total = price * qty;
-        $(this).find('.product_total').text(total.toLocaleString('en-US', { minimumFractionDigits: 2 }));
+
+        $(this).find('.product_total')
+            .text(total.toLocaleString('en-US', { minimumFractionDigits: 2 }));
+
         sub_total += total;
     });
 
-    // ✅ check if tax should be applied
     let applyTax = $('#apply_tax').is(':checked');
     let tax_rate = applyTax ? (parseFloat($('[name="tax"]').val()) / 100 || 0) : 0;
-    let tax_amount = sub_total * tax_rate;
 
+    let tax_amount = sub_total * tax_rate;
     let grand_total = sub_total + tax_amount;
 
-    // update subtotal
-    $('#sub_total').text(sub_total.toLocaleString('en-US', { minimumFractionDigits: 2 }));
-    $('[name="sub_total"]').val(sub_total.toFixed(2));
+    $('#sub_total').text(sub_total.toFixed(2));
+    $('#tax_amount').text(tax_amount.toFixed(2));
+    $('#grand_total').text(grand_total.toFixed(2));
 
-    // update tax
-    $('#tax_amount').text(tax_amount.toLocaleString('en-US', { minimumFractionDigits: 2 }));
-    $('[name="tax_amount"]').val(tax_amount.toFixed(2));
-
-    // update grand total
-    $('#grand_total').text(grand_total.toLocaleString('en-US', { minimumFractionDigits: 2 }));
-    $('[name="grand_total"]').val(grand_total.toFixed(2));
+    $('[name="sub_total"]').val(sub_total);
+    $('[name="tax_amount"]').val(tax_amount);
+    $('[name="grand_total"]').val(grand_total);
 }
 
-// Recalculate when tax toggle is switched
-$(document).on('change', '#apply_tax', function() {
-    calc();
-});
 
-    $(function() {
-        $('#product-id').select2({
-            placeholder: "Please Select Product here",
-            width: '100%'
-        })
-$('#add_item').click(function () {
-    var id = $('#product-id').val();
-    var qty = parseFloat($('#product-qty').val());
 
-    if (id === '' || isNaN(qty) || qty <= 0) {
-        alert("Product and Quantity Field is required!");
-        return false;
-    }
+///////////////////////////////////////////////////////////
+// MAIN UI LOGIC
+///////////////////////////////////////////////////////////
 
-    const selectedOption = document.querySelector(`#product-id option[value="${id}"]`);
-    const availableStock = parseFloat(selectedOption?.getAttribute('data-stock')) || 0;
+$(function() {
 
-    if (qty > availableStock) {
-        alert(`Cannot add item. Only ${availableStock} left in stock.`);
-        return false;
-    }
+    $('#product-id').select2({
+        placeholder: "Select Product",
+        width: '100%'
+    });
 
-    if (!!prod_arr[id]) {
-        if ($('#POS-field table tbody input[name="product_id[]"][value="' + id + '"]').length > 0) {
-            alert('Item Already in the List.');
-            return false;
+
+    //////////////////////////////////////////////////////
+    // ADD ITEM
+    //////////////////////////////////////////////////////
+
+    $('#add_item').click(function () {
+
+        var id = $('#product-id').val();
+        var qty = parseFloat($('#product-qty').val());
+
+        if (!id || qty <= 0){
+            alert("Select product and quantity");
+            return;
+        }
+
+        const selectedOption = document.querySelector(`#product-id option[value="${id}"]`);
+        const availableStock = parseFloat(selectedOption?.getAttribute('data-stock')) || 0;
+
+        if (qty > availableStock){
+            alert(`Only ${availableStock} left in stock.`);
+            return;
         }
 
         const data = prod_arr[id];
+
         const tr = $($('noscript#item-clone').html()).clone();
+
+        tr.attr('data-max-stock', availableStock);
 
         tr.find('[name="qty[]"]').val(qty);
         tr.find('[name="product_id[]"]').val(id);
         tr.find('[name="price[]"]').val(data.price);
+
         tr.find('.product_name').text(data.name);
         tr.find('.product_unit').text(data.unit_name);
-        tr.find('.product_price').text(parseFloat(data.price).toLocaleString('en-US'));
-        tr.find('.product_total').text(parseFloat(data.price * qty).toLocaleString('en-US'));
-
-        // Store max available stock for later validation
-        tr.attr('data-max-stock', availableStock);
+        tr.find('.product_price').text(data.price);
 
         $('#POS-field table tbody').append(tr);
-        $('#product-id').val('').trigger('change');
-        $('#product-qty').val(1);
+
         calc();
 
-        // Quantity input event with stock re-check
-        tr.find('[name="qty[]"]').on('input keypress keyup keydown', function () {
-            const newQty = parseFloat($(this).val());
-            const max = parseFloat(tr.attr('data-max-stock'));
-            if (newQty > max) {
-                alert(`Only ${max} left in stock.`);
-                $(this).val(max);
-            }
+        tr.find('.rem-item').click(function(){
+            tr.remove();
             calc();
         });
 
-        tr.find('.rem-item').click(function () {
-            if (confirm("Are you sure to remove " + data.name + " from the list?")) {
-                tr.remove();
-                calc();
-            }
-        });
-
-    } else {
-        alert("Undefined Product");
-    }
-});
-
-
-        $('[name="tax"]').on('input keypress keydown keyup', function() {
-            calc()
-        })
-        $('#check_out').click(function() {
-            if ($('#POS-field table tbody tr').length <= 0) {
-                alert("Add atleast 1 product first!")
-                return false;
-            }
-            uni_modal("Checkout", "{% url 'checkout-modal' %}?grand_total=" + $('[name="grand_total"]').val())
-        })
-        $('#pos-form').submit(function(e) {
-            e.preventDefault();
-            var _this = $(this)
-            $('.err-msg').remove();
-            var el = $('<div>')
-            el.addClass("alert alert-danger err-msg")
-            el.hide()
-            if (_this[0].checkValidity() == false) {
-                _this[0].reportValidity();
-                return false;
-            }
-            start_loader();
-            $.ajax({
-                headers: {
-                    "X-CSRFToken": '{{csrf_token}}'
-                },
-                url: "{% url 'save-pos' %}",
-                data: new FormData($(this)[0]),
-                cache: false,
-                contentType: false,
-                processData: false,
-                method: 'POST',
-                type: 'POST',
-                dataType: 'json',
-                error: err => {
-                    console.log(err)
-                    end_loader();
-                },
-                success: function(resp) {
-                    if (typeof resp == 'object' && resp.status == 'success') {
-                        el.removeClass("alert alert-danger err-msg")
-                            // location.reload()
-                        uni_modal("Receipt", "{% url 'receipt-modal' %}?id=" + resp.sale_id)
-                        $('#uni_modal').on('hide.bs.modal', function() {
-                            location.reload()
-                        })
-                    } else if (resp.status == 'failed' && !!resp.msg) {
-                        el.text(resp.msg)
-                    } else {
-                        el.text("An error occured", 'error');
-                        end_loader();
-                        console.err(resp)
-                    }
-                    _this.prepend(el)
-                    el.show('slow')
-                    $("html, body, .modal").scrollTop(0);
-                    end_loader()
-                }
-            })
-        })
-    })
-
-    const productSelect = document.getElementById('product-id');
-    const qtyInput = document.getElementById('product-qty');
-    const stockInfo = document.getElementById('stock-info');
-    const addItemBtn = document.getElementById('add_item');
-
-    let currentStock = 0;
-
-    productSelect.addEventListener('change', function () {
-        const selectedOption = this.options[this.selectedIndex];
-        currentStock = parseFloat(selectedOption.getAttribute('data-stock')) || 0;
-        stockInfo.textContent = `Available stock: ${currentStock}`;
+        $('#product-id').val('').trigger('change');
+        $('#product-qty').val(1);
     });
 
- //   addItemBtn.addEventListener('click', function () {
- //       const qty = parseFloat(qtyInput.value) || 0;
-//
- //       if (qty > currentStock) {
- //           alert(`Cannot add item. Only ${currentStock} left in stock.`);
- //           return;
- //       }
-
-        // Proceed to add the item to the cart (your existing logic)
-  //  });
 
 
-  $(document).keydown(function(e) {
-    // F2: Focus Product Selection
-    if (e.which == 113) { 
+    //////////////////////////////////////////////////////
+    // FORM SUBMIT (ONLINE/OFFLINE)
+    //////////////////////////////////////////////////////
+
+    $('#pos-form').submit(function(e){
+
         e.preventDefault();
-        $('#product-id').select2('open');
-    }
 
-    // F4: Toggle Tax
-    if (e.which == 115) {
-        e.preventDefault();
-        $('#apply_tax').prop('checked', !$('#apply_tax').prop('checked')).trigger('change');
-    }
-
-    // F10: Checkout
-    if (e.which == 121) {
-        e.preventDefault();
-        $('#check_out').click();
-    }
-
-    // ESC: Close Select2 or Clear Selection
-    if (e.which == 27) {
-        if ($('#product-id').data('select2').isOpen()) {
-            $('#product-id').select2('close');
-        } else {
-            $('#product-id').val('').trigger('change');
-            $('#product-qty').val(1);
+        if ($('#POS-field table tbody tr').length <= 0){
+            alert("Add atleast 1 product first!");
+            return;
         }
-    }
 
-    // ENTER: Add item if quantity field is focused
-    if (e.which == 13 && $('#product-qty').is(':focus')) {
-        e.preventDefault();
-        $('#add_item').click();
-    }
+        start_loader();
+
+        const formData = new FormData(this);
+
+        if(navigator.onLine){
+
+            sendOnline(formData)
+            .done(function(resp){
+
+                end_loader();
+
+                if(resp.status === 'success'){
+
+                    uni_modal("Receipt", "{% url 'receipt-modal' %}?id=" + resp.sale_id)
+
+                    $('#uni_modal').on('hide.bs.modal', function(){
+                        location.reload()
+                    })
+
+                }else{
+                    alert(resp.msg || "Error occurred");
+                }
+
+            })
+            .fail(function(){
+                saveOffline(formData);
+            });
+
+        }else{
+            saveOffline(formData);
+        }
+
+    });
+
 });
 
-// Helper to let the user know shortcuts are available
-console.log("POS Shortcuts Loaded: F2: Search, F4: Tax, F10: Checkout");
+///////////////////////////////////////////////////////////
+// SHORTCUTS
+///////////////////////////////////////////////////////////
+
+$(document).keydown(function(e){
+
+    if(e.which == 113) $('#product-id').select2('open'); // F2
+    if(e.which == 115) $('#apply_tax').click();          // F4
+    if(e.which == 121) $('#pos-form').submit();          // F10
+
+});
+
+console.log("POS Hybrid Mode Ready ✓");
+
 </script>
+
 {% endblock ScriptBlock %}

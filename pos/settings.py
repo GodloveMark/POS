@@ -34,6 +34,7 @@ ALLOWED_HOSTS = [
     '127.0.0.1',
     'a16d-196-41-56-187.ngrok-free.app',
     'pos-qqym.onrender.com',
+    ".ngrok-free.app",
     ]
 CSRF_TRUSTED_ORIGINS = [
      # Render domain
@@ -41,6 +42,7 @@ CSRF_TRUSTED_ORIGINS = [
     'https://127.0.0.1',                # Local development (if applicable)
     'https://a16d-196-41-56-187.ngrok-free.app',
     'https://pos-qqym.onrender.com',
+    "https://*.ngrok-free.app",
 ]
 
 # Application definition
