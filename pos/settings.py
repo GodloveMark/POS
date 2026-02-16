@@ -35,6 +35,7 @@ ALLOWED_HOSTS = [
     'a16d-196-41-56-187.ngrok-free.app',
     'pos-qqym.onrender.com',
     ".ngrok-free.app",
+    'pos.mwalikohub.com',
     ]
 CSRF_TRUSTED_ORIGINS = [
      # Render domain
@@ -43,6 +44,7 @@ CSRF_TRUSTED_ORIGINS = [
     'https://a16d-196-41-56-187.ngrok-free.app',
     'https://pos-qqym.onrender.com',
     "https://*.ngrok-free.app",
+    'https://pos.mwalikohub.com',
 ]
 
 # Application definition
