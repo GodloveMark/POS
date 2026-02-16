@@ -2035,3 +2035,179 @@ def stock_ledger(request, product_id, store_id):
         "rows": rows,
         "store": store
     })
+
+
+
+
+import pandas as pd
+from django.http import HttpResponse
+
+def export_products_excel(request):
+    store = Store.objects.filter(owner=request.user).first()
+
+    qs = Product.objects.filter(store=store).select_related('category', 'unit')
+
+    data = []
+    for p in qs:
+        data.append({
+            "code": p.code,
+            "name": p.name,
+            "category": p.category.name if p.category else "",
+            "price": p.price,
+            "cost_price": p.cost_price,
+            "unit": p.unit.short_name if p.unit else "",
+            "low_stock_threshold": p.low_stock_threshold,
+        })
+
+    df = pd.DataFrame(data)
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = "attachment; filename=products.xlsx"
+
+    df.to_excel(response, index=False)
+    return response
+
+
+def download_product_template(request):
+    df = pd.DataFrame(columns=[
+        "code", "name", "category", "price",
+        "cost_price", "unit", "low_stock_threshold"
+    ])
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = "attachment; filename=product_template.xlsx"
+
+    df.to_excel(response, index=False)
+    return response
+
+
+from decimal import Decimal
+
+def import_products_excel(request):
+    if request.method == "POST":
+        file = request.FILES.get("file")
+        store = Store.objects.filter(owner=request.user).first()
+
+        df = pd.read_excel(file)
+
+        for _, row in df.iterrows():
+            category, _ = Category.objects.get_or_create(
+                name=str(row["category"]).strip(),
+                store=store
+            )
+
+            unit, _ = Unit.objects.get_or_create(
+                short_name=str(row["unit"]).strip(),
+                store=store
+            )
+
+            Product.objects.update_or_create(
+                code=str(row["code"]).strip(),
+                store=store,
+                defaults={
+                    "name": row["name"],
+                    "category": category,
+                    "price": Decimal(row["price"]),
+                    "cost_price": Decimal(row["cost_price"]),
+                    "unit": unit,
+                    "low_stock_threshold": Decimal(row["low_stock_threshold"]),
+                }
+            )
+
+        messages.success(request, "Products imported successfully")
+        return redirect("product-page")
+
+
+def download_stock_template(request):
+    df = pd.DataFrame(columns=[
+        "product_code", "quantity", "cost_price", "date_received"
+    ])
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = "attachment; filename=stock_template.xlsx"
+
+    df.to_excel(response, index=False)
+    return response
+
+
+
+import pandas as pd
+from django.db import transaction
+from django.shortcuts import redirect
+from django.contrib import messages
+from datetime import date
+
+@transaction.atomic
+def import_stock_excel(request):
+    if request.method == "POST":
+        file = request.FILES.get('file')
+        if not file:
+            messages.error(request, "No file uploaded.")
+            return redirect(request.META.get('HTTP_REFERER'))
+
+        df = pd.read_excel(file)
+
+        user = request.user
+        store = user.assigned_stores.first() if user.role == "cashier" else Store.objects.filter(owner=user).first()
+
+        for _, row in df.iterrows():
+            product = Product.objects.filter(
+                code=row['product_code'],
+                store=store
+            ).first()
+
+            if not product:
+                continue  # skip invalid products
+
+            qty = int(row['quantity'])
+            cost = float(row['cost_price'])
+            received = row.get('date_received', date.today())
+
+            StockEntry.objects.create(
+                product=product,
+                store=store,
+                quantity=qty,
+                remaining_quantity=qty,
+                cost_price=cost,
+                date_received=received
+            )
+
+        messages.success(request, "Stock imported successfully.")
+        return redirect(request.META.get('HTTP_REFERER'))
+
+
+
+import pandas as pd
+from django.http import HttpResponse
+
+def export_stock_excel(request):
+    user = request.user
+    store = user.assigned_stores.first() if user.role == "cashier" else Store.objects.filter(owner=user).first()
+
+    data = []
+    products = Product.objects.filter(store=store)
+
+    for p in products:
+        data.append({
+            "product_code": p.code,
+            "product_name": p.name,
+            "current_stock": p.get_remaining_quantity(store),
+            "selling_price": p.price,
+            "unit": p.unit.short_name if p.unit else ""
+        })
+
+    df = pd.DataFrame(data)
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=current_stock.xlsx'
+
+    df.to_excel(response, index=False)
+    return response

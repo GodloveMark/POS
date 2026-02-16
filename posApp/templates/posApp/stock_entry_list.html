@@ -2,10 +2,23 @@
 {% load humanize %}
 {% block pageContent %}
 <div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
-    <div class="mdc-card py-2">
+    <div class="mdc-card py-3 px-4">
         <div class="d-flex justify-content-between align-items-center">
-            <h4 class="card-title mb-0">Stock Entry List</h4>
-            <a href="{% url 'add_stock_entry' %}" class="btn btn-sm btn-success">+ Add Stock Entry</a>
+            <h4 class="card-title mb-0 d-flex align-items-center">
+                <i class="mdi mdi-dolly text-primary me-2"></i> Stock Entry List
+            </h4>
+
+            <div class="d-flex gap-2">
+                <a href="{% url 'add_stock_entry' %}" class="btn btn-primary shadow-sm px-3 d-flex align-items-center fw-bold">
+                    <i class="mdi mdi-plus-circle-outline me-1"></i> Add Stock Entry
+                </a>
+
+                <button class="btn btn-outline-success d-flex align-items-center px-3 fw-bold" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#importStockModal">
+                    <i class="mdi mdi-file-import-outline me-1"></i> Import Stock
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -65,6 +78,72 @@
             </div>
         </div>
     </div>
+
+  <div class="modal fade" id="importStockModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
+            
+            <div class="modal-header bg-light border-0 py-3" style="border-radius: 15px 15px 0 0;">
+                <h5 class="modal-title d-flex align-items-center fw-bold text-dark">
+                    <i class="mdi mdi-file-import text-success me-2 h4 mb-0"></i> Import Stock Data
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form method="POST" enctype="multipart/form-data" action="{% url 'import_stock_excel' %}">
+                {% csrf_token %}
+
+                <div class="modal-body p-4">
+                    <div class="alert alert-info border-0 shadow-none mb-4" style="background-color: #f0f7ff; border-radius: 10px;">
+                        <div class="d-flex">
+                            <i class="mdi mdi-information-outline me-2 h5 text-primary"></i>
+                            <div class="small text-dark">
+                                Ensure your Excel file matches the system columns. 
+                                <br>
+                                <a href="{% url 'download_stock_template' %}" class="fw-bold text-decoration-none">
+                                    <i class="mdi mdi-download me-1"></i>Download Template
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase" style="letter-spacing: 1px;">Upload Excel File</label>
+                        <div class="input-group">
+                            <input type="file" 
+                                   name="file" 
+                                   accept=".xlsx" 
+                                   class="form-control shadow-none border-secondary-subtle" 
+                                   id="inputGroupFile02" 
+                                   required>
+                            <label class="input-group-text bg-success text-white border-success" for="inputGroupFile02">
+                                <i class="mdi mdi-upload"></i>
+                            </label>
+                        </div>
+                        <div class="form-text mt-2 small">Accepted format: <strong>.xlsx</strong> only.</div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 bg-light p-3" style="border-radius: 0 0 15px 15px;">
+                    <div class="row w-100 g-2">
+                        <div class="col-6">
+                            <button type="button" class="btn btn-outline-secondary w-100 fw-bold py-2" data-bs-dismiss="modal">
+                                Cancel
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button type="submit" class="btn btn-success w-100 fw-bold py-2 shadow-sm">
+                                <i class="mdi mdi-check-circle-outline me-1"></i> Start Import
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
+
 </div>
 
 <script>

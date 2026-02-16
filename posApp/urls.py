@@ -64,6 +64,15 @@ urlpatterns = [
     path("ledger/<int:product_id>/<int:store_id>/", views.stock_ledger, name="stock_ledger"),
 
 
+    
+    path("products/export/", views.export_products_excel, name="export_products_excel"),
+    path( 'products/import/', views.import_products_excel, name='import_products_excel' ),
+    path( 'products/template/', views.download_product_template, name='download_product_template' ),
+
+    path('stock/import/', views.import_stock_excel, name='import_stock_excel'),
+    path('stock/template/', views.download_stock_template, name='download_stock_template'),
+    path('stock/export/', views.export_stock_excel, name='export_stock_excel'),
+
 
     # path('employees', views.employees, name="employee-page"),
     # path('manage_employees', views.manage_employees, name="manage_employees-page"),
