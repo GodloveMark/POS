@@ -124,10 +124,10 @@
                     </a>
                 </div>
 
-                <form method="POST" enctype="multipart/form-data">
+                <form method="POST" enctype="multipart/form-data" action="{% url 'import_products_excel' %}">
                     {% csrf_token %}
 
-                    <div class="mb-4">
+                    <div class="mb-4"> 
                         <label class="form-label fw-bold small text-muted text-uppercase mb-2" style="letter-spacing: 0.5px;">
                             Select Excel File (.xlsx)
                         </label>
