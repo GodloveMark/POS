@@ -2072,8 +2072,14 @@ def export_products_excel(request):
 
 def download_product_template(request):
     df = pd.DataFrame(columns=[
-        "code", "name", "category", "price",
-        "cost_price", "unit", "low_stock_threshold"
+        "code",
+        "name",
+        "category",
+        "price",
+        "cost_price",
+        "unit",
+        "low_stock_threshold",
+        "opening_stock"   # ✅ NEW
     ])
 
     response = HttpResponse(
@@ -2085,12 +2091,19 @@ def download_product_template(request):
     return response
 
 
+
 from decimal import Decimal, InvalidOperation
 import pandas as pd
 from django.contrib import messages
 from django.shortcuts import redirect
 from .models import Product, Category, Unit, Store
+from decimal import Decimal, InvalidOperation
+import pandas as pd
+from django.contrib import messages
+from django.shortcuts import redirect
+from django.db import transaction
 
+@transaction.atomic
 def import_products_excel(request):
     if request.method != "POST":
         return redirect("product-page")
@@ -2103,9 +2116,10 @@ def import_products_excel(request):
         return redirect("product-page")
 
     df = pd.read_excel(file)
+    df.columns = df.columns.str.lower()  # ✅ normalize headers
 
     REQUIRED_COLUMNS = {"name", "price", "cost_price"}
-    missing = REQUIRED_COLUMNS - set(df.columns.str.lower())
+    missing = REQUIRED_COLUMNS - set(df.columns)
 
     if missing:
         messages.error(
@@ -2116,46 +2130,54 @@ def import_products_excel(request):
 
     for _, row in df.iterrows():
 
-        # --- REQUIRED FIELDS ---
+        # ---------- REQUIRED ----------
         name = str(row.get("name", "")).strip()
         if not name:
-            continue  # skip empty rows
+            continue
 
         try:
             price = Decimal(row.get("price"))
             cost_price = Decimal(row.get("cost_price"))
         except (InvalidOperation, TypeError):
-            continue  # skip invalid price rows
+            continue
 
-        # --- OPTIONAL FIELDS ---
+        # ---------- OPTIONAL ----------
         code = str(row.get("code")).strip() if not pd.isna(row.get("code")) else None
 
         category = None
-        if not pd.isna(row.get("category")):
+        if "category" in df.columns and not pd.isna(row.get("category")):
             category, _ = Category.objects.get_or_create(
                 name=str(row["category"]).strip(),
                 store=store
             )
 
         unit = None
-        if not pd.isna(row.get("unit")):
+        if "unit" in df.columns and not pd.isna(row.get("unit")):
             unit, _ = Unit.objects.get_or_create(
                 short_name=str(row["unit"]).strip(),
                 store=store
             )
 
         low_stock = Decimal("10")
-        if not pd.isna(row.get("low_stock_threshold")):
+        if "low_stock_threshold" in df.columns and not pd.isna(row.get("low_stock_threshold")):
             try:
                 low_stock = Decimal(row["low_stock_threshold"])
             except InvalidOperation:
                 pass
 
-        # --- AUTO CODE GENERATION ---
-        if not code:
-            code = f"PRD-{store.id}-{Product.objects.count()+1}"
+        # ---------- OPENING STOCK ----------
+        opening_stock = Decimal("0")
+        if "opening_stock" in df.columns and not pd.isna(row.get("opening_stock")):
+            try:
+                opening_stock = Decimal(row["opening_stock"])
+            except InvalidOperation:
+                opening_stock = Decimal("0")
 
-        Product.objects.update_or_create(
+        # ---------- AUTO CODE ----------
+        if not code:
+            code = f"PRD-{store.id}-{Product.objects.count() + 1}"
+
+        product, created = Product.objects.update_or_create(
             code=code,
             store=store,
             defaults={
@@ -2168,13 +2190,24 @@ def import_products_excel(request):
             }
         )
 
-    messages.success(request, "Products imported successfully")
+        # ---------- CREATE STOCK ENTRY ----------
+        if opening_stock > 0:
+            StockEntry.objects.create(
+                product=product,
+                store=store,
+                quantity=opening_stock,
+                remaining_quantity=opening_stock,
+                cost_price=cost_price
+            )
+            # 🔥 StockMovement(IN) auto-created in StockEntry.save()
+
+    messages.success(request, "Products and opening stock imported successfully")
     return redirect("product-page")
 
 
 def download_stock_template(request):
     df = pd.DataFrame(columns=[
-        "product_code", "quantity", "cost_price", "date_received"
+        "product_code","product_name", "quantity", "cost_price", "date_received"
     ])
 
     response = HttpResponse(
