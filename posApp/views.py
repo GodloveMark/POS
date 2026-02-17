@@ -2085,41 +2085,91 @@ def download_product_template(request):
     return response
 
 
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+import pandas as pd
+from django.contrib import messages
+from django.shortcuts import redirect
+from .models import Product, Category, Unit, Store
 
 def import_products_excel(request):
-    if request.method == "POST":
-        file = request.FILES.get("file")
-        store = Store.objects.filter(owner=request.user).first()
+    if request.method != "POST":
+        return redirect("product-page")
 
-        df = pd.read_excel(file)
+    file = request.FILES.get("file")
+    store = Store.objects.filter(owner=request.user).first()
 
-        for _, row in df.iterrows():
+    if not file or not store:
+        messages.error(request, "Invalid import request")
+        return redirect("product-page")
+
+    df = pd.read_excel(file)
+
+    REQUIRED_COLUMNS = {"name", "price", "cost_price"}
+    missing = REQUIRED_COLUMNS - set(df.columns.str.lower())
+
+    if missing:
+        messages.error(
+            request,
+            f"Missing required columns: {', '.join(missing)}"
+        )
+        return redirect("product-page")
+
+    for _, row in df.iterrows():
+
+        # --- REQUIRED FIELDS ---
+        name = str(row.get("name", "")).strip()
+        if not name:
+            continue  # skip empty rows
+
+        try:
+            price = Decimal(row.get("price"))
+            cost_price = Decimal(row.get("cost_price"))
+        except (InvalidOperation, TypeError):
+            continue  # skip invalid price rows
+
+        # --- OPTIONAL FIELDS ---
+        code = str(row.get("code")).strip() if not pd.isna(row.get("code")) else None
+
+        category = None
+        if not pd.isna(row.get("category")):
             category, _ = Category.objects.get_or_create(
                 name=str(row["category"]).strip(),
                 store=store
             )
 
+        unit = None
+        if not pd.isna(row.get("unit")):
             unit, _ = Unit.objects.get_or_create(
                 short_name=str(row["unit"]).strip(),
                 store=store
             )
 
-            Product.objects.update_or_create(
-                code=str(row["code"]).strip(),
-                store=store,
-                defaults={
-                    "name": row["name"],
-                    "category": category,
-                    "price": Decimal(row["price"]),
-                    "cost_price": Decimal(row["cost_price"]),
-                    "unit": unit,
-                    "low_stock_threshold": Decimal(row["low_stock_threshold"]),
-                }
-            )
+        low_stock = Decimal("10")
+        if not pd.isna(row.get("low_stock_threshold")):
+            try:
+                low_stock = Decimal(row["low_stock_threshold"])
+            except InvalidOperation:
+                pass
 
-        messages.success(request, "Products imported successfully")
-        return redirect("product-page")
+        # --- AUTO CODE GENERATION ---
+        if not code:
+            code = f"PRD-{store.id}-{Product.objects.count()+1}"
+
+        Product.objects.update_or_create(
+            code=code,
+            store=store,
+            defaults={
+                "name": name,
+                "category": category,
+                "price": price,
+                "cost_price": cost_price,
+                "unit": unit,
+                "low_stock_threshold": low_stock,
+            }
+        )
+
+    messages.success(request, "Products imported successfully")
+    return redirect("product-page")
 
 
 def download_stock_template(request):
