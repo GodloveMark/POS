@@ -72,6 +72,10 @@ urlpatterns = [
     path('stock/import/', views.import_stock_excel, name='import_stock_excel'),
     path('stock/template/', views.download_stock_template, name='download_stock_template'),
     path('stock/export/', views.export_stock_excel, name='export_stock_excel'),
+  
+    
+    # path("stock/<int:pk>/edit/", views.edit_stock_entry, name="edit_stock_entry"),
+    path("stock/delete/<int:pk>/", views.delete_stock_entry, name="delete_stock_entry"),
 
 
     # path('employees', views.employees, name="employee-page"),

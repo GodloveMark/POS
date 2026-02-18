@@ -2294,3 +2294,35 @@ def export_stock_excel(request):
 
     df.to_excel(response, index=False)
     return response
+
+
+
+#def edit_stock_entry(request, pk):
+#    store = Store.objects.filter(owner=request.user).first()
+#    entry = get_object_or_404(StockEntry, pk=pk, store=store)
+#
+#    if request.method == "POST":
+#        form = StockEntryForm(request.POST, instance=entry)
+#        if form.is_valid():
+#            form.save()
+#            messages.success(request, "Stock entry updated successfully.")
+#            return redirect("stock_entry_list")
+#    else:
+#        form = StockEntryForm(instance=entry)
+#
+#    # Pass to stock_entry_list template for modal
+#    entries = StockEntry.objects.all().order_by('-date_received')  # existing list
+#    return render(request, "posApp/stock_entry_list.html", {
+#        "entries": entries,
+#        "form": form,
+#        "edit_entry": entry,
+#        "title": "Edit Stock Entry"
+#    })
+
+
+@require_POST
+def delete_stock_entry(request, pk):
+    entry = get_object_or_404(StockEntry, pk=pk)
+    entry.delete()
+    messages.success(request, "Stock entry deleted successfully.")
+    return redirect("stock_entry_list")
