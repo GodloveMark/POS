@@ -41,18 +41,29 @@
             </div>
             {% endfor %}
             <hr class="my-1">
-            <div class="d-flex w-100">
-                <div class="col-6 text-start fw-bold">Total</div>
-                <div class="col-6 text-end fw-bold">{{ transaction.grand_total|intcomma }}</div>
-            </div>
-            <div class="d-flex w-100">
-                <div class="col-6 text-start"><small>Tax ({{ transaction.tax|intcomma }}%):</small></div>
-                <div class="col-6 text-end"><small>{{ transaction.tax_amount|intcomma|floatformat:2 }}</small></div>
-            </div>
-            <div class="d-flex w-100 pt-1">
-                <div class="col-6 text-start">Tendered</div>
-                <div class="col-6 text-end">{{ transaction.tendered_amount|intcomma }}</div>
-            </div>
+            <table class="table table-borderless text-end">
+    <tr>
+        <th class="text-start">Subtotal</th>
+        <td>{{ transaction.sub_total|intcomma }}</td>
+    </tr>
+
+    <tr>
+        <th class="text-start">
+            Tax ({{ transaction.tax_rate }}%)
+        </th>
+        <td>{{ transaction.tax_amount|intcomma }}</td>
+    </tr>
+
+    <tr class="border-top fw-bold">
+        <th class="text-start">Total</th>
+        <td>{{ transaction.grand_total|intcomma }}</td>
+    </tr>
+
+    <tr>
+        <th class="text-start">Tendered</th>
+        <td>{{ transaction.tendered|intcomma }}</td>
+    </tr>
+</table>
             <!--div class="d-flex w-100 border-top mt-1">
                 <div class="col-6 text-start fw-bold">Change</div>
                 <div class="col-6 text-end fw-bold">{{ transaction.amount_change|intcomma }}</div>

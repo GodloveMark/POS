@@ -1026,20 +1026,27 @@ def salesList(request):
 @admin_manager_only
 def receipt(request):
     id = request.GET.get('id')
-    sales = Sales.objects.filter(id = id).first()
-    transaction = {}
-    for field in Sales._meta.get_fields():
-        if field.related_model is None:
-            transaction[field.name] = getattr(sales,field.name)
-    if 'tax_amount' in transaction:
-        transaction['tax_amount'] = format(float(transaction['tax_amount']))
-    ItemList = SalesItem.objects.filter(sale_id = sales).all()
-    context = {
-        "transaction" : transaction,
-        "SalesItem" : ItemList
+    sales = Sales.objects.filter(id=id).first()
+
+    if not sales:
+        return HttpResponse("Invalid receipt")
+
+    transaction = {
+        "sub_total": sales.sub_total,
+        "tax_amount": sales.tax_amount,
+        "grand_total": sales.grand_total,
+        "tendered": sales.tendered if hasattr(sales, 'tendered') else 0,
+        "tax_rate": int(sales.tax_rate * 100) if hasattr(sales, 'tax_rate') else 18,
     }
 
-    return render(request, 'posApp/receipt.html',context)
+    item_list = SalesItem.objects.filter(sale_id=sales)
+
+    context = {
+        "transaction": transaction,
+        "SalesItem": item_list,
+    }
+
+    return render(request, 'posApp/receipt.html', context)
     # return HttpResponse('')
 
 @login_required
