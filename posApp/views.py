@@ -851,15 +851,18 @@ from datetime import datetime
 from django.db.models import Sum, F
 from django.http import JsonResponse
 from .models import Product, Sales, SalesItem, StockEntry, Store, Customer
+from .fractions import FRACTIONS
+
+
 @login_required
 @require_POST
-
 @transaction.atomic
 def save_pos(request):
     try:
         # --- Get posted data ---
         product_ids = request.POST.getlist('product_id[]')
         qtys = request.POST.getlist('qty[]')
+        fractions = request.POST.getlist('fraction[]')  # 🔥 NEW
         tendered_amount = Decimal(request.POST.get('tendered_amount', '0'))
         amount_paid = Decimal(request.POST.get('amount_paid', '0'))
         is_credit = request.POST.get('is_credit') == 'true'
@@ -889,30 +892,42 @@ def save_pos(request):
             if not product:
                 raise ValueError(f"Product ID {pid} does not belong to your store.")
 
-            qty = Decimal(qtys[idx])
-            if qty <= 0:
+            qty_units = Decimal(qtys[idx])
+            if qty_units <= 0:
                 raise ValueError(f"Invalid quantity for product {product.name}.")
 
-            price = Decimal(product.price)
+            fraction_key = fractions[idx] if idx < len(fractions) else "1"
+            fraction_value = FRACTIONS.get(fraction_key)
+
+            if not fraction_value:
+                raise ValueError(f"Invalid fraction selected for {product.name}.")
+
+            # 🔥 ACTUAL quantity in base unit (kg / ltr)
+            actual_qty = qty_units * fraction_value
+
+            price = Decimal(product.price)  # price per 1kg / 1ltr
 
             cart_items.append({
                 'product': product,
-                'qty': qty,
+                'qty': actual_qty,
                 'price': price,
             })
 
-            sub_total += price * qty
+            sub_total += price * actual_qty
 
         # --- Calculate totals ---
         tax_rate = Decimal('0.18')
         tax_amount = sub_total * tax_rate
         grand_total = sub_total + tax_amount
         tendered = amount_paid if is_credit else tendered_amount
-        amount_change = 0 if is_credit else tendered - grand_total
+        amount_change = Decimal('0.00') if is_credit else tendered - grand_total
 
         # --- Customer handling ---
         customer = Customer.objects.filter(id=customer_id).first() if customer_id else None
-        parsed_due_date = datetime.strptime(due_date, "%Y-%m-%d").date() if due_date and is_credit else None
+        parsed_due_date = (
+            datetime.strptime(due_date, "%Y-%m-%d").date()
+            if due_date and is_credit else None
+        )
 
         # --- Save Sale ---
         sale = Sales.objects.create(
@@ -931,68 +946,65 @@ def save_pos(request):
             amount_paid=tendered if is_credit else tendered_amount
         )
 
-        
         # --- Save Sale Items + FIFO Stock ---
         for item in cart_items:
-           product = item['product']
-           qty_to_deduct = item['qty']
-           price = item['price']
-        
-           # Save SaleItem
-           SalesItem.objects.create(
-               sale=sale,
-               product=product,
-               qty=qty_to_deduct,
-               price=price,
-               unit=product.unit if product.unit else None
-           )
-        
-           original_qty = qty_to_deduct  # keep for ledger
-        
-           # FIFO stock deduction
-           stock_entries = StockEntry.objects.select_for_update().filter(
-               product=product,
-               store=current_store,
-               remaining_quantity__gt=0
-           ).order_by('date_received')
-        
-           for entry in stock_entries:
-               if qty_to_deduct <= 0:
-                   break
-        
-               deduct = min(entry.remaining_quantity, qty_to_deduct)
-               entry.remaining_quantity -= deduct
-               entry.save()
-               qty_to_deduct -= deduct
-        
-           if qty_to_deduct > 0:
-               raise ValueError(f"Insufficient stock for {product.name}.")
-        
-           # ✅🔥 CREATE LEDGER ENTRY (THIS WAS MISSING)
-           StockMovement.objects.create(
-               product=product,
-               store=current_store,
-               movement_type="SALE",
-               quantity=-original_qty,
-               reference=f"SALE-{sale.id}",
-               created_by=user
-           )
-        
-           # ✅ update product stock cache
-           new_stock = StockEntry.objects.filter(
-               product=product,
-               store=current_store
-           ).aggregate(total=Sum('remaining_quantity'))['total'] or 0
-        
-           product.stock = new_stock
-           product.save()
+            product = item['product']
+            qty_to_deduct = item['qty']
+            price = item['price']
 
+            # Save SaleItem
+            SalesItem.objects.create(
+                sale=sale,
+                product=product,
+                qty=qty_to_deduct,
+                price=price,
+                unit=product.unit
+            )
+
+            original_qty = qty_to_deduct
+
+            # FIFO stock deduction
+            stock_entries = StockEntry.objects.select_for_update().filter(
+                product=product,
+                store=current_store,
+                remaining_quantity__gt=0
+            ).order_by('date_received')
+
+            for entry in stock_entries:
+                if qty_to_deduct <= 0:
+                    break
+
+                deduct = min(entry.remaining_quantity, qty_to_deduct)
+                entry.remaining_quantity -= deduct
+                entry.save()
+                qty_to_deduct -= deduct
+
+            if qty_to_deduct > 0:
+                raise ValueError(f"Insufficient stock for {product.name}.")
+
+            # Stock ledger
+            StockMovement.objects.create(
+                product=product,
+                store=current_store,
+                movement_type="SALE",
+                quantity=-original_qty,
+                reference=f"SALE-{sale.id}",
+                created_by=user
+            )
+
+            # Update cached stock
+            new_stock = StockEntry.objects.filter(
+                product=product,
+                store=current_store
+            ).aggregate(total=Sum('remaining_quantity'))['total'] or 0
+
+            product.quantity = new_stock
+            product.save()
 
         return JsonResponse({'status': 'success', 'sale_id': sale.id})
 
     except Exception as e:
         return JsonResponse({'status': 'failed', 'msg': str(e)})
-
 
 
 
