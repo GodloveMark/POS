@@ -110,6 +110,7 @@ class Product(models.Model):
         Unit, null=True, blank=True, on_delete=models.SET_NULL, related_name="products"
     )  # 🔑 NEW
     cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    is_active = models.BooleanField(default=True)
     low_stock_threshold = models.DecimalField(max_digits=12, decimal_places=3, default=10)
     status = models.IntegerField(default=1)
     date_added = models.DateTimeField(default=timezone.now)

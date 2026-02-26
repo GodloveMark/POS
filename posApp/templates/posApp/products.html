@@ -163,6 +163,29 @@
 
 {% block ScriptBlock %}
 <script>
+    function delete_product(id) {
+    start_loader();
+    $.ajax({
+        headers: { "X-CSRFToken": '{{ csrf_token }}' },
+        url: "{% url 'delete-product' %}",
+        method: "POST",
+        data: { id: id },
+        dataType: "json",
+        error: err => {
+            console.log(err);
+            alert_toast("An error occurred.", 'error');
+            end_loader();
+        },
+        success: function(resp) {
+            if (resp.status === 'success') {
+                location.reload();
+            } else {
+                alert_toast("An error occurred.", 'error');
+                end_loader();
+            }
+        }
+    });
+}
 $(function() {
     // Add/Edit/Delete actions
     $('#create_new').click(function() {
@@ -183,21 +206,7 @@ $(function() {
         });
     });
 
-    function delete_product($id) {
-        start_loader();
-        $.ajax({
-            headers: { "X-CSRFToken": '{{csrf_token}}' },
-            url: "{% url 'delete-product' %}",
-            method: "POST",
-            data: { id: $id },
-            dataType: "json",
-            error: err => { console.log(err); alert_toast("An error occured.", 'error'); end_loader(); },
-            success: function(resp) {
-                if (resp.status === 'success') location.reload();
-                else { alert_toast("An error occured.", 'error'); end_loader(); }
-            }
-        });
-    }
+    
 
     // Frontend pagination and search
     const table = document.getElementById('product-table');

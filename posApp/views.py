@@ -751,19 +751,17 @@ def deduct_stock_fifo(product, quantity_needed):
     if remaining_qty > 0:
         raise ValueError("Not enough stock available to fulfill the request.")
 
-
 @login_required
 @admin_manager_only
 def delete_product(request):
-    data =  request.POST
-    resp = {'status':''}
     try:
-        Product.objects.filter(id = data['id']).delete()
-        resp['status'] = 'success'
-        messages.success(request, 'Product Successfully deleted.')
-    except:
-        resp['status'] = 'failed'
-    return HttpResponse(json.dumps(resp), content_type="application/json")
+        product = Product.objects.get(id=request.POST['id'])
+        product.delete()
+        return JsonResponse({'status': 'success'})
+    except Exception as e:
+        print("DELETE ERROR:", e)
+        traceback.print_exc()
+        return JsonResponse({'status': 'failed', 'error': str(e)})
 
 @login_required
 def pos(request):
