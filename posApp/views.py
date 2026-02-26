@@ -766,7 +766,7 @@ def delete_product(request):
 @login_required
 def pos(request):
     user = request.user
-
+ 
     # Admin / Manager: stores they own
     if user.role in ["admin", "manager"]:
         stores = user.owned_stores.all()
