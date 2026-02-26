@@ -127,40 +127,102 @@ def logoutuser(request):
     return redirect('/')
 
 # Create your views here.
+from datetime import datetime, timedelta
+from django.db.models import Sum, Count, Q
+from django.utils import timezone
+from calendar import monthrange
+from django.db.models.functions import Coalesce
+
 @login_required
 def home(request):
-    now = datetime.now()
-    current_year = now.strftime("%Y")
-    current_month = now.strftime("%m")
-    current_day = now.strftime("%d")
+    now = timezone.now()
+    current_year = now.year
+    current_month = now.month
+    current_day = now.day
 
     stores = Store.objects.filter(owner=request.user)
+
+    # ---------------- BASIC COUNTS ----------------
     categories = Category.objects.filter(store__in=stores).count()
     product_count = Product.objects.filter(store__in=stores).count()
 
+    # ---------------- TODAY SALES ----------------
     today_sales_qs = Sales.objects.filter(
-    store__in=stores,
-           date_added__year=current_year,
-        date_added__month=current_month,
-        date_added__day=current_day
-)
-
-    transaction = today_sales_qs.count()
-    today_sales = Sales.objects.filter(
+        store__in=stores,
         date_added__year=current_year,
         date_added__month=current_month,
         date_added__day=current_day
     )
-    total_sales = sum(today_sales_qs.values_list('grand_total', flat=True))
 
+    transaction = today_sales_qs.count()
+    total_sales = today_sales_qs.aggregate(total=Sum('grand_total'))['total'] or 0
+
+    # ---------------- OUT OF STOCK ----------------
+    out_of_stock = Product.objects.filter(
+    store__in=stores
+).annotate(
+    total_remaining_quantity=Coalesce(
+        Sum("stock_entries__remaining_quantity"),
+        0
+    )
+).filter(
+    total_remaining_quantity__lte=0
+)
+
+    # ---------------- EXPIRING SOON (30 DAYS) ----------------
+    expiring_soon = Product.objects.filter(
+        store__in=stores,
+        expiry_date__isnull=False,
+        expiry_date__lte=now.date() + timedelta(days=30)
+    )
+
+    # ---------------- TOP SELLING PRODUCTS ----------------
+    top_products = SalesItem.objects.filter(
+        sale__store__in=stores
+    ).values(
+        'product__name'
+    ).annotate(
+        total_sold=Sum('qty')
+    ).order_by('-total_sold')[:10]
+
+    # ---------------- SLOW MOVING (LAST 30 DAYS) ----------------
+    last_30_days = now - timedelta(days=30)
+
+    slow_movers = Product.objects.filter(store__in=stores).annotate(
+        sold_last_30=Sum(
+            'salesitem__qty',
+            filter=Q(salesitem__sale__date_added__gte=last_30_days)
+        )
+    ).order_by('sold_last_30')[:10]
+
+    # ---------------- MONTHLY SALES TREND ----------------
+    monthly_sales = []
+    month_labels = []
+
+    for m in range(1, 13):
+        total = Sales.objects.filter(
+            store__in=stores,
+            date_added__year=current_year,
+            date_added__month=m
+        ).aggregate(total=Sum('grand_total'))['total'] or 0
+
+        monthly_sales.append(float(total))
+        month_labels.append(datetime(current_year, m, 1).strftime('%b'))
 
     context = {
-        'page_title': 'Home',
+        'page_title': 'Smart Dashboard',
         'categories': categories,
         'product_count': product_count,
         'transaction': transaction,
         'total_sales': total_sales,
+        'out_of_stock': out_of_stock,
+        'expiring_soon': expiring_soon,
+        'top_products': list(top_products),
+        'slow_movers': slow_movers,
+        'monthly_sales': monthly_sales,
+        'month_labels': month_labels,
     }
+
     return render(request, 'posApp/home.html', context)
 
 
@@ -1040,6 +1102,10 @@ def receipt(request):
     id = request.GET.get('id')
     sales = Sales.objects.filter(id=id).first()
 
+    store = sales.store  # 🔥 THIS IS THE KEY LINE
+
+    settings = StoreSettings.objects.filter(store=store).first()
+
     if not sales:
         return HttpResponse("Invalid receipt")
 
@@ -1056,6 +1122,9 @@ def receipt(request):
     context = {
         "transaction": transaction,
         "SalesItem": item_list,
+        "store": store,          
+        "settings": settings,
+         
     }
 
     return render(request, 'posApp/receipt.html', context)
@@ -1991,47 +2060,36 @@ def change_user_password(request):
 
 
 
-from .forms import StoreSettingsForm
+from .forms import StoreSettingsForm, StoreForm
 from .models import StoreUser, StoreSettings
-
 
 @login_required
 def store_settings(request):
 
-    # -----------------------------------
-    # SAFE store access
-    # -----------------------------------
     store = Store.objects.filter(owner=request.user).first()
 
     if not store:
         messages.error(request, "No store assigned to your account.")
-        return redirect("pos-page")  # change if needed
+        return redirect("pos-page")
 
-
-    # -----------------------------------
-    # SAFE settings access (important)
-    # -----------------------------------
     settings, _ = StoreSettings.objects.get_or_create(store=store)
 
-
-    # -----------------------------------
-    # Form handling
-    # -----------------------------------
     if request.method == "POST":
-        form = StoreSettingsForm(request.POST, instance=settings)
+        store_form = StoreForm(request.POST, instance=store)
+        settings_form = StoreSettingsForm(request.POST, instance=settings)
 
-        if form.is_valid():
-            form.save()
+        if store_form.is_valid() and settings_form.is_valid():
+            store_form.save()
+            settings_form.save()
             messages.success(request, "Settings updated successfully")
             return redirect("store-settings")
-
     else:
-        form = StoreSettingsForm(instance=settings)
-
+        store_form = StoreForm(instance=store)
+        settings_form = StoreSettingsForm(instance=settings)
 
     return render(request, "posApp/settings.html", {
-        "form": form,
-        "settings": settings,  # optional if template needs it
+        "form": settings_form,
+        "store_form": store_form,
     })
 
 

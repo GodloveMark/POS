@@ -24,6 +24,48 @@
                     <form method="post" id="config-form">
                         {% csrf_token %}
 
+
+<!-- BUSINESS IDENTITY -->
+<div class="mb-5">
+    <div class="d-flex align-items-center mb-4">
+        <h5 class="text-uppercase fw-bold text-muted small mb-0 tracking-wider">
+            Business Identity
+        </h5>
+        <div class="ms-3 flex-grow-1 border-bottom border-light"></div>
+    </div>
+
+    <div class="row gy-4 gx-5">
+        <div class="col-md-6">
+            <label class="form-label fw-bold mb-2">Store Name</label>
+            <div class="input-group input-group-lg border rounded">
+                <span class="input-group-text bg-light border-0">
+                    <i class="mdi mdi-store"></i>
+                </span>
+                {{ store_form.name }}
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label fw-bold mb-2">Phone Number</label>
+            <div class="input-group input-group-lg border rounded">
+                <span class="input-group-text bg-light border-0">
+                    <i class="mdi mdi-phone"></i>
+                </span>
+                {{ store_form.phone }}
+            </div>
+        </div>
+
+        <div class="col-12">
+            <label class="form-label fw-bold mb-2">Address</label>
+            <div class="input-group border rounded">
+                <span class="input-group-text bg-light border-0 align-items-start pt-3">
+                    <i class="mdi mdi-map-marker"></i>
+                </span>
+                {{ store_form.address }}
+            </div>
+        </div>
+    </div>
+</div>
                         <div class="mb-5">
                             <div class="d-flex align-items-center mb-4">
                                 <h5 class="text-uppercase fw-bold text-muted small mb-0 tracking-wider">Module Switches</h5>

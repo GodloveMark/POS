@@ -1,0 +1,408 @@
+{% extends "posApp/base.html" %} 
+{% load humanize %} 
+{% block pageContent %}
+<style>
+    /* Dashboard Stat Cards */
+    .stat-card {
+        border: none;
+        border-radius: 15px !important;
+        transition: all 0.3s ease;
+        overflow: hidden;
+        background: #fff;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+    }
+    .stat-card .card-inner {
+        padding: 1.5rem;
+        position: relative;
+        z-index: 1;
+    }
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: #2d3436;
+        margin-bottom: 2px;
+    }
+    .stat-label {
+        color: #b2bec3;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .stat-description {
+        font-size: 0.75rem;
+        color: #95a5a6;
+        margin-top: 10px;
+    }
+
+    /* Icon Blobs */
+    .icon-blob {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .icon-blob i {
+        font-size: 24px;
+        color: white;
+    }
+
+    /* Color Themes */
+    .blob-categories { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .blob-products { background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%); }
+    .blob-transactions { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+    .blob-sales { background: linear-gradient(135deg, #f2994a 0%, #f2c94c 100%); }
+
+    .welcome-header {
+        color: #2d3436;
+        font-weight: 800;
+    }
+
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --glass-bg: rgba(255, 255, 255, 0.9);
+    }
+    .stat-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border: none !important;
+        border-radius: 15px !important;
+        overflow: hidden;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+    }
+    .icon-blob {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        font-size: 24px;
+        margin-bottom: 1rem;
+    }
+    /* Dynamic Blob Colors */
+    .blob-categories { background: #e0e7ff; color: #4338ca; }
+    .blob-products { background: #fef3c7; color: #b45309; }
+    .blob-transactions { background: #dcfce7; color: #15803d; }
+    .blob-sales { background: #fce7f3; color: #be185d; }
+    
+    .stat-value { font-size: 1.5rem; font-weight: 700; color: #1f2937; }
+    .stat-label { color: #6b7280; font-size: 0.875rem; font-weight: 500; }
+    
+    .list-group-item { border: none; padding: 12px 0; border-bottom: 1px solid #f3f4f6; }
+    .list-group-item:last-child { border-bottom: none; }
+    .chart-container { position: relative; width: 100%; }
+
+    /* Custom Scrollbar for the list */
+    .stock-scroll-container::-webkit-scrollbar {
+        width: 6px;
+    }
+    .stock-scroll-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    .stock-scroll-container::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+    .stock-scroll-container::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+    
+    /* Soft red badge */
+    .bg-danger-soft {
+        background-color: rgba(220, 53, 69, 0.1);
+    }
+    .bg-light-success { background-color: rgba(40, 167, 69, 0.1) !important; }
+.bg-light-danger { background-color: rgba(220, 53, 69, 0.1) !important; }
+.bg-light-warning { background-color: rgba(255, 193, 7, 0.1) !important; }
+.bg-light-secondary { background-color: rgba(108, 117, 125, 0.1) !important; }
+
+.table th { font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+</style>
+
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-12">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1">Business Overview</h3>
+            <p class="text-muted mb-0">Real-time performance metrics for your retail hub.</p>
+        </div>
+        <div class="mt-3 mt-md-0">
+            <div class="badge bg-white text-dark shadow-sm p-3 border-0 rounded-3">
+                <i class="mdi mdi-calendar-check text-primary me-2"></i>
+                <span class="fw-semibold">{% now "F j, Y" %}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-4-tablet">
+    <div class="mdc-card stat-card p-4 shadow-sm">
+        <div class="icon-blob blob-categories"><i class="mdi mdi-shape"></i></div>
+        <div class="stat-label">Categories</div>
+        <div class="stat-value">{{ categories|intcomma }}</div>
+        <small class="text-muted mt-2 d-block"><i class="mdi mdi-check-circle-outline"></i> In System</small>
+    </div>
+</div>
+
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-4-tablet">
+    <div class="mdc-card stat-card p-4 shadow-sm">
+        <div class="icon-blob blob-products"><i class="mdi mdi-package-variant"></i></div>
+        <div class="stat-label">Total Products</div>
+        <div class="stat-value">{{ product_count|intcomma }}</div>
+        <small class="text-muted mt-2 d-block"><i class="mdi mdi-archive-outline"></i> Active Stock</small>
+    </div>
+</div>
+
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-4-tablet">
+    <div class="mdc-card stat-card p-4 shadow-sm">
+        <div class="icon-blob blob-transactions"><i class="mdi mdi-cart-heart"></i></div>
+        <div class="stat-label">Today's Orders</div>
+        <div class="stat-value">{{ transaction|intcomma }}</div>
+        <small class="text-success mt-2 d-block fw-medium"><i class="mdi mdi-trending-up"></i> Live Tracking</small>
+    </div>
+</div>
+
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-4-tablet">
+    <div class="mdc-card stat-card p-4 shadow-sm">
+        <div class="icon-blob blob-sales"><i class="mdi mdi-cash-register"></i></div>
+        <div class="stat-label">Revenue Today</div>
+        <div class="stat-value text-primary">Tsh {{ total_sales|intcomma }}</div>
+        <small class="text-muted mt-2 d-block"><i class="mdi mdi-shield-check-outline"></i> Verified Gross</small>
+    </div>
+</div>
+
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-12 mt-4">
+    <div class="mdc-card p-3 border-0 shadow-sm" style="background: var(--primary-gradient);">
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3">
+            <h5 class="text-white mb-0 fw-bold">Instant Operations</h5>
+            <div class="d-flex gap-2">
+                <a href="{% url 'pos-page' %}" class="btn btn-light btn-sm px-4 rounded-pill fw-bold">
+                    <i class="mdi mdi-plus me-1"></i> New Sale
+                </a>
+                <a href="{% url 'product-page' %}" class="btn btn-outline-light btn-sm px-4 rounded-pill">
+                    Manage Stock
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-12 mt-4">
+    <div class="mdc-card p-4 shadow-sm border-0">
+        <h5 class="fw-bold mb-4">Sales Revenue Trend ({{ now|date:"Y" }})</h5>
+        <div class="chart-container" style="height: 300px;">
+            <canvas id="salesTrendChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-6-desktop mt-4">
+    <div class="mdc-card p-4 shadow-sm border-0">
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-3 gap-2">
+            <div class="d-flex align-items-center">
+                <div class="p-2 bg-light-danger rounded-3 me-3">
+                    <i class="mdi mdi-alert-octagon text-danger fs-4"></i>
+                </div>
+                <h5 class="mb-0 fw-bold">Out of Stock</h5>
+            </div>
+            <div class="input-group input-group-sm" style="max-width: 200px;">
+                <span class="input-group-text bg-light border-end-0"><i class="mdi mdi-magnify text-muted"></i></span>
+                <input type="text" id="stockSearch" class="form-control bg-light border-start-0 ps-0" placeholder="Search items...">
+            </div>
+        </div>
+
+        <div class="stock-scroll-container" style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
+            <ul class="list-group list-group-flush" id="stockList">
+                {% for p in out_of_stock %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center stock-item">
+                        <span class="fw-medium text-dark item-name">{{ p.name }}</span>
+                        <div class="text-end">
+                            <span class="badge bg-danger-soft text-danger border border-danger rounded-pill px-3">0 Left</span>
+                        </div>
+                    </li>
+                {% empty %}
+                    <li class="list-group-item text-center py-5 border-0">
+                        <i class="mdi mdi-check-circle text-success fs-1 d-block mb-2"></i>
+                        <p class="text-muted">Everything is in stock! 🎉</p>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-6-desktop mt-4">
+    <div class="mdc-card p-4 shadow-sm border-0">
+        <div class="d-flex align-items-center mb-3">
+            <div class="p-2 bg-light-warning rounded-3 me-3"><i class="mdi mdi-clock-alert text-warning fs-4"></i></div>
+            <h5 class="mb-0 fw-bold">Expiring Soon</h5>
+        </div>
+        <ul class="list-group list-group-flush">
+            {% for p in expiring_soon %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span class="fw-medium text-dark">{{ p.name }}</span>
+                    <span class="text-warning small fw-bold">{{ p.expiry_date }}</span>
+                </li>
+            {% empty %}
+                <li class="list-group-item text-center py-4">
+                    <i class="mdi mdi-shield-check text-info fs-1 d-block mb-2"></i>
+                    <p class="text-muted">No expiry alerts found.</p>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-6-desktop mt-4">
+    <div class="mdc-card p-4 shadow-sm border-0">
+        <div class="d-flex align-items-center mb-3">
+            <div class="p-2 bg-light-success rounded-3 me-3"><i class="mdi mdi-trending-up text-success fs-4"></i></div>
+            <h5 class="mb-0 fw-bold">Top Selling Products</h5>
+        </div>
+        
+        <div class="shortlist-container" style="max-height: 320px; overflow-y: auto; padding-right: 8px;">
+            <ul class="list-group list-group-flush">
+                {% for p in top_products %}
+                <li class="list-group-item border-0 px-0">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-bold text-dark">{{ p.product__name }}</span>
+                        <span class="text-success fw-bold">{{ p.total_sold|intcomma }} sold</span>
+                    </div>
+                    <div class="progress" style="height: 6px; background-color: #f0fdf4;">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: 85%;" aria-valuenow="85" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </li>
+                {% empty %}
+                <li class="list-group-item text-center py-5 border-0">
+                    <p class="text-muted small">No sales data available yet.</p>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-6-desktop mt-4">
+    <div class="mdc-card p-4 shadow-sm border-0">
+        <div class="d-flex align-items-center mb-3">
+            <div class="p-2 bg-light-secondary rounded-3 me-3"><i class="mdi mdi-snowflake text-secondary fs-4"></i></div>
+            <h5 class="mb-0 fw-bold">Slow Moving Products</h5>
+        </div>
+
+        <div class="shortlist-container" style="max-height: 320px; overflow-y: auto; padding-right: 8px;">
+            <ul class="list-group list-group-flush">
+                {% for p in slow_movers %}
+                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                    <div>
+                        <div class="fw-medium text-dark">{{ p.name }}</div>
+                        <small class="text-muted">Last 30 days performance</small>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge rounded-pill bg-light text-dark border">
+                            {{ p.sold_last_30|default:0 }} sold
+                        </span>
+                    </div>
+                </li>
+                {% empty %}
+                <li class="list-group-item text-center py-5 border-0">
+                    <p class="text-muted small">All products are moving well!</p>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Reusing the custom scrollbar logic for consistency */
+    .shortlist-container::-webkit-scrollbar {
+        width: 4px;
+    }
+    .shortlist-container::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .shortlist-container::-webkit-scrollbar-thumb {
+        background: #e2e8f0;
+        border-radius: 10px;
+    }
+    .shortlist-container::-webkit-scrollbar-thumb:hover {
+        background: #cbd5e1;
+    }
+
+    /* Success Background Utility */
+    .bg-light-success { background-color: rgba(34, 197, 94, 0.1) !important; }
+    .bg-light-secondary { background-color: rgba(107, 114, 128, 0.1) !important; }
+</style>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+/* MONTHLY SALES */
+new Chart(document.getElementById('salesTrendChart'), {
+    type: 'line',
+    data: {
+        labels: {{ month_labels|safe }},
+        datasets: [{
+            label: 'Monthly Revenue',
+            data: {{ monthly_sales|safe }},
+            borderColor: '#3f51b5',
+            fill: false,
+            tension: 0.3
+        }]
+    }
+});
+
+/* TOP PRODUCTS */
+new Chart(document.getElementById('topProductsChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ top_products|safe }}.map(p => p.product__name),
+        datasets: [{
+            label: 'Units Sold',
+            data: {{ top_products|safe }}.map(p => p.total_sold),
+            backgroundColor: '#4caf50'
+        }]
+    }
+});
+
+/* SLOW MOVERS */
+new Chart(document.getElementById('slowProductsChart'), {
+    type: 'bar',
+    data: {
+        labels: [{% for p in slow_movers %}'{{ p.name }}',{% endfor %}],
+        datasets: [{
+            label: 'Sold (30 days)',
+            data: [{% for p in slow_movers %}{{ p.sold_last_30|default:0 }},{% endfor %}],
+            backgroundColor: '#ff5722'
+        }]
+    }
+});
+
+document.getElementById('stockSearch').addEventListener('keyup', function() {
+    let filter = this.value.toLowerCase();
+    let items = document.querySelectorAll('#stockList .stock-item');
+
+    items.forEach(function(item) {
+        let text = item.querySelector('.item-name').textContent.toLowerCase();
+        if (text.includes(filter)) {
+            item.style.setProperty('display', 'flex', 'important');
+        } else {
+            item.style.setProperty('display', 'none', 'important');
+        }
+    });
+});
+</script>
+
+{% endblock pageContent %}

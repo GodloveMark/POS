@@ -154,6 +154,11 @@ class ChangeUserPasswordForm(forms.Form):
 from django import forms
 from .models import StoreSettings
 from decimal import Decimal, InvalidOperation
+from .models import Store
+class StoreForm(forms.ModelForm):
+    class Meta:
+        model = Store
+        fields = ['name', 'address', 'phone']
 
 class StoreSettingsForm(forms.ModelForm):
     tax_percentage = forms.DecimalField(

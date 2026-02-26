@@ -61,6 +61,8 @@ class Store(models.Model):
         related_name='owned_stores'
     )
     cashiers = models.ManyToManyField('CustomUser', related_name='stores')
+    address = models.TextField(blank=True, null=True)
+    phone = models.CharField(max_length=30, blank=True, null=True)
     date_added = models.DateTimeField(default=timezone.now)
     date_updated = models.DateTimeField(auto_now=True)
 
@@ -313,11 +315,16 @@ class StoreSettings(models.Model):
     enable_low_stock_alert = models.BooleanField(default=True)
     enable_discounts = models.BooleanField(default=True)
     enable_credit_sales = models.BooleanField(default=False)
+    
 
     # 🔹 Business config
     tax_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     currency = models.CharField(max_length=10, default="TZS")
     receipt_footer = models.TextField(blank=True, null=True)
+   # address = models.TextField()
+   # phone = models.CharField(max_length=20)
+    show_tax = models.BooleanField(default=True)
+    show_total = models.BooleanField(default=True)
 
     updated_at = models.DateTimeField(auto_now=True)
 

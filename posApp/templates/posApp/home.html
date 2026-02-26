@@ -1,159 +1,251 @@
 {% extends "posApp/base.html" %} 
 {% load humanize %} 
 {% block pageContent %}
+
 <style>
-    /* Dashboard Stat Cards */
+    /* Global Dashboard Variables */
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --success-soft: rgba(34, 197, 94, 0.1);
+        --danger-soft: rgba(220, 53, 69, 0.1);
+        --warning-soft: rgba(255, 193, 7, 0.1);
+        --secondary-soft: rgba(107, 114, 128, 0.1);
+    }
+
+    /* Stat Cards Optimization */
     .stat-card {
-        border: none;
+        border: none !important;
         border-radius: 15px !important;
-        transition: all 0.3s ease;
-        overflow: hidden;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
         background: #fff;
         box-shadow: 0 4px 20px rgba(0,0,0,0.05);
     }
     .stat-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.1) !important;
     }
-    .stat-card .card-inner {
-        padding: 1.5rem;
-        position: relative;
-        z-index: 1;
-    }
-    .stat-value {
-        font-size: 1.8rem;
-        font-weight: 800;
-        color: #2d3436;
-        margin-bottom: 2px;
-    }
-    .stat-label {
-        color: #b2bec3;
-        font-size: 0.85rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    .stat-description {
-        font-size: 0.75rem;
-        color: #95a5a6;
-        margin-top: 10px;
-    }
+    .stat-value { font-size: 1.6rem; font-weight: 800; color: #1f2937; margin-bottom: 2px; }
+    .stat-label { color: #6b7280; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 
-    /* Icon Blobs */
+    /* Unified Icon Blobs */
     .icon-blob {
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        width: 50px;
-        height: 50px;
-        border-radius: 12px;
+        width: 48px;
+        height: 48px;
         display: flex;
         align-items: center;
         justify-content: center;
-    }
-    .icon-blob i {
+        border-radius: 12px;
         font-size: 24px;
-        color: white;
+        margin-bottom: 1rem;
     }
+    .blob-categories { background: #e0e7ff; color: #4338ca; }
+    .blob-products { background: #fef3c7; color: #b45309; }
+    .blob-transactions { background: #dcfce7; color: #15803d; }
+    .blob-sales { background: #fce7f3; color: #be185d; }
 
-    /* Color Themes */
-    .blob-categories { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-    .blob-products { background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%); }
-    .blob-transactions { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
-    .blob-sales { background: linear-gradient(135deg, #f2994a 0%, #f2c94c 100%); }
-
-    .welcome-header {
-        color: #2d3436;
-        font-weight: 800;
+    /* Scrollable Containers */
+    .custom-scroll {
+        max-height: 300px; 
+        overflow-y: auto; 
+        padding-right: 5px;
     }
+    .custom-scroll::-webkit-scrollbar { width: 4px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+    
+    /* List Items */
+    .list-group-item { border: none; padding: 12px 0; border-bottom: 1px solid #f3f4f6; }
+    .list-group-item:last-child { border-bottom: none; }
 </style>
 
-<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12">
-    <div class="mdc-card py-3 px-4 border-0 shadow-none bg-transparent">
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-12">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1">Business Overview</h3>
+            <p class="text-muted mb-0">Real-time performance metrics for your retail hub.</p>
+        </div>
+        <div class="badge bg-white text-dark shadow-sm p-3 border-0 rounded-3">
+            <i class="mdi mdi-calendar-check text-primary me-2"></i>
+            <span class="fw-semibold">{% now "F j, Y" %}</span>
+        </div>
+    </div>
+</div>
+
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-4-tablet">
+    <div class="mdc-card stat-card p-4">
+        <div class="icon-blob blob-categories"><i class="mdi mdi-shape"></i></div>
+        <div class="stat-label">Categories</div>
+        <div class="stat-value">{{ categories|intcomma }}</div>
+        <small class="text-muted"><i class="mdi mdi-check-circle-outline"></i> In System</small>
+    </div>
+</div>
+
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-4-tablet">
+    <div class="mdc-card stat-card p-4">
+        <div class="icon-blob blob-products"><i class="mdi mdi-package-variant"></i></div>
+        <div class="stat-label">Total Products</div>
+        <div class="stat-value">{{ product_count|intcomma }}</div>
+        <small class="text-muted"><i class="mdi mdi-archive-outline"></i> Active Stock</small>
+    </div>
+</div>
+
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-4-tablet">
+    <div class="mdc-card stat-card p-4">
+        <div class="icon-blob blob-transactions"><i class="mdi mdi-cart-heart"></i></div>
+        <div class="stat-label">Today's Orders</div>
+        <div class="stat-value">{{ transaction|intcomma }}</div>
+        <small class="text-success fw-medium"><i class="mdi mdi-trending-up"></i> Live Tracking</small>
+    </div>
+</div>
+
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-4-tablet">
+    <div class="mdc-card stat-card p-4">
+        <div class="icon-blob blob-sales"><i class="mdi mdi-cash-register"></i></div>
+        <div class="stat-label">Revenue Today</div>
+        <div class="stat-value text-primary">Tsh {{ total_sales|intcomma }}</div>
+        <small class="text-muted"><i class="mdi mdi-shield-check-outline"></i> Verified Gross</small>
+    </div>
+</div>
+
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-12 mt-3">
+    <div class="mdc-card p-3 border-0 shadow-sm text-white" style="background: var(--primary-gradient);">
         <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h4 class="welcome-header mb-1">Business Overview</h4>
-                <p class="text-muted small mb-0">Track your daily retail performance and inventory at a glance.</p>
-            </div>
-            <div class="text-end">
-                <span class="badge bg-white text-dark shadow-sm py-2 px-3 border">
-                    <i class="mdi mdi-calendar text-primary me-1"></i> {% now "F j, Y" %}
-                </span>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-3-tablet">
-    <div class="mdc-card stat-card">
-        <div class="card-inner">
-            <div class="icon-blob blob-categories shadow-sm">
-                <i class="mdi mdi-tag-multiple"></i>
-            </div>
-            <div class="stat-label">Categories</div>
-            <div class="stat-value">{{ categories|intcomma }}</div>
-            <div class="stat-description">
-                <i class="mdi mdi-trending-up text-success"></i> Organized groups
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-3-tablet">
-    <div class="mdc-card stat-card">
-        <div class="card-inner">
-            <div class="icon-blob blob-products shadow-sm">
-                <i class="mdi mdi-package-variant-closed"></i>
-            </div>
-            <div class="stat-label">Products</div>
-            <div class="stat-value">{{ product_count|intcomma }}</div>
-            <div class="stat-description">
-                <i class="mdi mdi-check-circle text-info"></i> Active in inventory
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-3-tablet">
-    <div class="mdc-card stat-card">
-        <div class="card-inner">
-            <div class="icon-blob blob-transactions shadow-sm">
-                <i class="mdi mdi-cart-outline"></i>
-            </div>
-            <div class="stat-label">Today's Orders</div>
-            <div class="stat-value">{{ transaction|intcomma }}</div>
-            <div class="stat-description">
-                <i class="mdi mdi-clock-outline text-success"></i> Completed today
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-3-desktop mdc-layout-grid__cell--span-3-tablet">
-    <div class="mdc-card stat-card">
-        <div class="card-inner">
-            <div class="icon-blob blob-sales shadow-sm">
-                <i class="mdi mdi-currency-usd" style="font-size: 24px; color: white;"></i>
-            </div>
-            <div class="stat-label">Revenue Today</div>
-            <div class="stat-value text-success">Tsh {{ total_sales|intcomma }}</div>
-            <div class="stat-description">
-                <i class="mdi mdi-shield-check text-warning"></i> Gross sales volume
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="mdc-layout-grid__cell stretch-card mdc-layout-grid__cell--span-12 mt-4">
-    <div class="mdc-card p-4 stat-card">
-        <div class="d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0">Quick Actions</h5>
+            <h5 class="mb-0 fw-bold">Instant Operations</h5>
             <div class="d-flex gap-2">
-                <a href="{% url 'pos-page' %}" class="btn btn-primary btn-sm px-3 rounded-pill">New Sale</a>
-                <a href="{% url 'product-page' %}" class="btn btn-outline-secondary btn-sm px-3 rounded-pill">Manage Stock</a>
+                <a href="{% url 'pos-page' %}" class="btn btn-light btn-sm px-4 rounded-pill fw-bold">New Sale</a>
+                <a href="{% url 'product-page' %}" class="btn btn-outline-light btn-sm px-4 rounded-pill">Manage Stock</a>
             </div>
         </div>
     </div>
 </div>
+
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-12 mt-4">
+    <div class="mdc-card p-4 stat-card">
+        <h5 class="fw-bold mb-4">Sales Revenue Trend ({{ now|date:"Y" }})</h5>
+        <div style="height: 300px;">
+            <canvas id="salesTrendChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-6-desktop mt-4">
+    <div class="mdc-card p-4 stat-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex align-items-center">
+                <div class="p-2 rounded-3 me-3" style="background: var(--danger-soft)"><i class="mdi mdi-alert-octagon text-danger fs-4"></i></div>
+                <h5 class="mb-0 fw-bold">Out of Stock</h5>
+            </div>
+            <input type="text" id="stockSearch" class="form-control form-control-sm w-auto" placeholder="Search...">
+        </div>
+        <div class="custom-scroll" id="stockList">
+            {% for p in out_of_stock %}
+            <div class="list-group-item d-flex justify-content-between align-items-center stock-item">
+                <span class="fw-medium text-dark item-name">{{ p.name }}</span>
+                <span class="badge bg-danger-soft text-danger border border-danger rounded-pill px-3">0 Left</span>
+            </div>
+            {% empty %}
+            <div class="text-center py-5"><p class="text-muted small">No items out of stock! 🎉</p></div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-6-desktop mt-4">
+    <div class="mdc-card p-4 stat-card">
+        <div class="d-flex align-items-center mb-3">
+            <div class="p-2 rounded-3 me-3" style="background: var(--warning-soft)"><i class="mdi mdi-clock-alert text-warning fs-4"></i></div>
+            <h5 class="mb-0 fw-bold">Expiring Soon</h5>
+        </div>
+        <div class="custom-scroll">
+            {% for p in expiring_soon %}
+            <div class="list-group-item d-flex justify-content-between">
+                <span class="fw-medium">{{ p.name }}</span>
+                <span class="text-warning fw-bold">{{ p.expiry_date }}</span>
+            </div>
+            {% empty %}
+            <div class="text-center py-5"><p class="text-muted small">No upcoming expirations.</p></div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-6-desktop mt-4">
+    <div class="mdc-card p-4 stat-card">
+        <div class="d-flex align-items-center mb-3">
+            <div class="p-2 rounded-3 me-3" style="background: var(--success-soft)"><i class="mdi mdi-trending-up text-success fs-4"></i></div>
+            <h5 class="mb-0 fw-bold">Top Selling Products</h5>
+        </div>
+        <div class="custom-scroll">
+            {% for p in top_products %}
+            <div class="list-group-item px-0">
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="fw-bold">{{ p.product__name }}</span>
+                    <span class="text-success small fw-bold">{{ p.total_sold }} sold</span>
+                </div>
+                <div class="progress" style="height: 6px;">
+                    <div class="progress-bar bg-success" style="width: 70%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="mdc-layout-grid__cell mdc-layout-grid__cell--span-6-desktop mt-4">
+    <div class="mdc-card p-4 stat-card">
+        <div class="d-flex align-items-center mb-3">
+            <div class="p-2 rounded-3 me-3" style="background: var(--secondary-soft)"><i class="mdi mdi-snowflake text-secondary fs-4"></i></div>
+            <h5 class="mb-0 fw-bold">Slow Moving Products</h5>
+        </div>
+        <div class="custom-scroll">
+            {% for p in slow_movers %}
+            <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                <span>{{ p.name }}</span>
+                <span class="badge rounded-pill bg-light text-dark border">{{ p.sold_last_30|default:0 }} sold</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    /* 1. SALES TREND CHART */
+    const trendCtx = document.getElementById('salesTrendChart').getContext('2d');
+    const salesGradient = trendCtx.createLinearGradient(0, 0, 0, 300);
+    salesGradient.addColorStop(0, 'rgba(102, 126, 234, 0.2)');
+    salesGradient.addColorStop(1, 'rgba(102, 126, 234, 0)');
+
+    new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: {{ month_labels|safe }},
+            datasets: [{
+                label: 'Revenue',
+                data: {{ monthly_sales|safe }},
+                borderColor: '#667eea',
+                borderWidth: 3,
+                backgroundColor: salesGradient,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, grid: { color: '#f3f4f6' } }, x: { grid: { display: false } } }
+        }
+    });
+
+    /* 2. SEARCH FUNCTIONALITY */
+    document.getElementById('stockSearch').addEventListener('keyup', function() {
+        let filter = this.value.toLowerCase();
+        document.querySelectorAll('#stockList .stock-item').forEach(item => {
+            let text = item.querySelector('.item-name').textContent.toLowerCase();
+            item.style.display = text.includes(filter) ? 'flex' : 'none';
+        });
+    });
+</script>
 
 {% endblock pageContent %}
