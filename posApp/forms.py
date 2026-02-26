@@ -173,7 +173,18 @@ class StoreSettingsForm(forms.ModelForm):
         model = StoreSettings
         exclude = ("store",)
         widgets = {
-            "receipt_footer": forms.Textarea(attrs={"rows": 3}),
+            "receipt_footer": forms.Textarea(attrs={
+                "rows": 3,
+                "class": "form-control"
+            }),
+            "show_tax": forms.CheckboxInput(attrs={
+                "class": "form-check-input",
+                "role": "switch"
+            }),
+            "show_total": forms.CheckboxInput(attrs={
+                "class": "form-check-input",
+                "role": "switch"
+            }),
         }
 
     def clean_tax_percentage(self):
@@ -184,7 +195,6 @@ class StoreSettingsForm(forms.ModelForm):
             return Decimal(value)
         except (InvalidOperation, TypeError):
             return Decimal("0.00")
-
 
 
 

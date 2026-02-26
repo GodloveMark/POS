@@ -67,30 +67,33 @@
     </div>
 </div>
                         <div class="mb-5">
-                            <div class="d-flex align-items-center mb-4">
-                                <h5 class="text-uppercase fw-bold text-muted small mb-0 tracking-wider">Module Switches</h5>
-                                <div class="ms-3 flex-grow-1 border-bottom border-light"></div>
-                            </div>
+    <div class="d-flex align-items-center mb-4">
+        <h5 class="text-uppercase fw-bold text-muted small mb-0 tracking-wider">
+            Module Switches
+        </h5>
+        <div class="ms-3 flex-grow-1 border-bottom border-light"></div>
+    </div>
 
-                            <div class="row g-4">
-                                {% for field in form %}
-                                    {% if "enable" in field.name %}
-                                    <div class="col-sm-6 col-md-4">
-                                        <div class="card h-100 border border-light-subtle shadow-sm hover-elevate">
-                                            <div class="card-body d-flex align-items-center justify-content-between p-3">
-                                                <label class="form-check-label fw-semibold text-secondary" for="{{ field.id_for_label }}">
-                                                    {{ field.label }}
-                                                </label>
-                                                <div class="form-check form-switch mb-0">
-                                                    {{ field }}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                {% endfor %}
+    <div class="row g-4">
+        {% for field in form %}
+            {% if "enable" in field.name or "show" in field.name %}
+                <div class="col-sm-6 col-md-4">
+                    <div class="card h-100 border border-light-subtle shadow-sm hover-elevate">
+                        <div class="card-body d-flex align-items-center justify-content-between p-3">
+                            <label class="form-check-label fw-semibold text-secondary"
+                                   for="{{ field.id_for_label }}">
+                                {{ field.label }}
+                            </label>
+                            <div class="form-check form-switch mb-0">
+                                {{ field }}
                             </div>
                         </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+</div>
 
                         <div class="mb-5">
                             <div class="d-flex align-items-center mb-4">
