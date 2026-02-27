@@ -75,6 +75,7 @@ urlpatterns = [
   
     
     # path("stock/<int:pk>/edit/", views.edit_stock_entry, name="edit_stock_entry"),
+    path('stock-entry/edit/<int:entry_id>/', views.edit_stock_entry, name='edit_stock_entry'),
     path("stock/delete/<int:pk>/", views.delete_stock_entry, name="delete_stock_entry"),
 
 

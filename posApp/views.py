@@ -2394,6 +2394,47 @@ def export_stock_excel(request):
 #        "title": "Edit Stock Entry"
 #    })
 
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+from .models import StockEntry
+
+def edit_stock_entry(request, entry_id):
+    entry = get_object_or_404(StockEntry, id=entry_id)
+
+    old_quantity = entry.quantity
+    old_remaining = entry.remaining_quantity
+
+    sold_quantity = old_quantity - old_remaining  # 🔑 critical
+
+    if request.method == "POST":
+        try:
+            new_quantity = float(request.POST.get("quantity"))
+            new_price = float(request.POST.get("price"))
+
+            # ❌ prevent invalid edits
+            if new_quantity < sold_quantity:
+                messages.error(
+                    request,
+                    f"Cannot set quantity below already sold amount ({sold_quantity})."
+                )
+                return redirect(request.META.get("HTTP_REFERER", "stock_entry_list"))
+
+            # ✅ correct replacement logic
+            entry.quantity = new_quantity
+            entry.cost_price = new_price
+            entry.remaining_quantity = new_quantity - sold_quantity
+
+            entry.save()
+
+            messages.success(
+                request,
+                f"Stock updated correctly. Remaining stock is now {entry.remaining_quantity}."
+            )
+
+        except (ValueError, TypeError):
+            messages.error(request, "Invalid values provided.")
+
+        return redirect(request.META.get("HTTP_REFERER", "stock_entry_list"))
 
 @require_POST
 def delete_stock_entry(request, pk):
