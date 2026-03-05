@@ -1293,8 +1293,8 @@ def admin_dashboard(request):
         return redirect('login_user')
 
     stores = Store.objects.all()
-    print("Stores:", stores)
-    print("Database in use:", settings.DATABASES['default']['NAME'])
+   # print("Stores:", stores)
+   # print("Database in use:", settings.DATABASES['default']['NAME'])
     managers = CustomUser.objects.filter(role='manager')
 
     return render(request, 'posApp/admin_dashboard.html', {

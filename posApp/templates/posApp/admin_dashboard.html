@@ -1,43 +1,81 @@
+{% extends 'posApp/base_admin.html' %} 
 
+{% block pageContent %}
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10">
+        <div class="d-sm-flex align-items-center justify-content-between mb-4">
+            <h1 class="h3 mb-0 text-gray-800">Registration Hub</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb bg-transparent p-0 m-0">
+                    <li class="breadcrumb-item"><a href="{% url 'admin_dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Setup New Store</li>
+                </ol>
+            </nav>
+        </div>
 
-{% extends 'posApp/base_admin.html' %} {% block pageContent %}
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h5 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-plus-circle me-2"></i>Create New Store & Manager
+                </h5>
+                <p class="text-muted small mb-0">Setting up a new location automatically creates its primary management account.</p>
+            </div>
+            
+            <div class="card-body p-4">
+                <form method="POST" action="{% url 'create_store_and_manager' %}">
+                    {% csrf_token %}
 
-    <h2>Admin Dashboard</h2>
+                    <div class="mb-4">
+                        <h6 class="text-uppercase text-muted fw-bold mb-3 small" style="letter-spacing: 1px;">
+                            <i class="fas fa-store me-2"></i>Store Details
+                        </h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Store Name</label>
+                                <input type="text" name="store_name" class="form-control shadow-none" placeholder="e.g. Downtown Branch" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Location</label>
+                                <input type="text" name="store_location" class="form-control shadow-none" placeholder="City or Street (Optional)">
+                            </div>
+                        </div>
+                    </div>
 
-    
-    <h4>Create  New Store and Manager</h4>
+                    <hr class="my-4" style="opacity: 0.1;">
 
+                    <div class="mb-4">
+                        <h6 class="text-uppercase text-muted fw-bold mb-3 small" style="letter-spacing: 1px;">
+                            <i class="fas fa-user-shield me-2"></i>Manager Credentials
+                        </h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Username</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-at text-muted"></i></span>
+                                    <input type="text" name="username" class="form-control border-start-0 shadow-none" placeholder="manager_name" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Password</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-lock text-muted"></i></span>
+                                    <input type="password" name="password" class="form-control border-start-0 shadow-none" placeholder="••••••••" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-   <form method="POST" action="{% url 'create_store_and_manager' %}">
-    {% csrf_token %}
-
-    <hr>
-    <!-- Store Section -->
-     <h5>Store Details</h5>
-    <div class="mb-3">
-        <input type="text" name="store_name" class="form-control" placeholder="Store Name" required>
+                    <input type="hidden" name="role" value="manager">
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <button type="reset" class="btn btn-light px-4">Clear Form</button>
+                        <button type="submit" class="btn btn-primary px-5 shadow-sm">
+                            Generate Store & Account <i class="fas fa-arrow-right ms-2"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-    <div class="mb-3">
-        <input type="text" name="store_location" class="form-control" placeholder="Location (optional)">
-    </div>
-
-    <hr>
-
-    <!-- Manager Section -->
-     <h5>Store Manager Details</h5>
-    <div class="mb-3">
-        <input type="text" name="username" class="form-control" placeholder="Manager Username" required>
-    </div>
-    <div class="mb-3">
-        <input type="password" name="password" class="form-control" placeholder="Password" required>
-    </div>
-
-    <input type="hidden" name="role" value="manager">
-    
-    <button type="submit" class="btn btn-primary">Create Store & Manager</button>
-</form>
-
-
+</div>
 {% endblock pageContent %}
-
-
