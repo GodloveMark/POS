@@ -49,10 +49,13 @@ class CustomUser(AbstractUser):
         return f"{self.username} ({self.role})"
 
 
+from django.utils import timezone
+from datetime import timedelta
 
 class Store(models.Model):
     name = models.CharField(max_length=150)
     location = models.TextField(blank=True, null=True)
+
     owner = models.ForeignKey(
         'CustomUser',
         on_delete=models.SET_NULL,
@@ -60,14 +63,33 @@ class Store(models.Model):
         blank=True,
         related_name='owned_stores'
     )
+
     cashiers = models.ManyToManyField('CustomUser', related_name='stores')
+
     address = models.TextField(blank=True, null=True)
     phone = models.CharField(max_length=30, blank=True, null=True)
+
+    # Subscription fields
+    activation_start = models.DateTimeField(default=timezone.now)
+    activation_end = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
     date_added = models.DateTimeField(default=timezone.now)
     date_updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name
+
+    def days_remaining(self):
+        if self.activation_end:
+            remaining = self.activation_end - timezone.now()
+            return remaining.days
+        return None
+
+    def is_expired(self):
+        if self.activation_end:
+            return timezone.now() > self.activation_end
+        return False
 
 
 

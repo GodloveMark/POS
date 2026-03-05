@@ -38,6 +38,32 @@ def admin_manager_only(view_func):
         return view_func(request, *args, **kwargs)
     return wrapper
 
+def admin_only(view_func):
+    def wrapper(request, *args, **kwargs):
+        if request.user.role not in ["admin"]:
+            return redirect("/pos/")
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+@admin_only
+def extend_store_subscription(request, store_id):
+
+    store = Store.objects.get(id=store_id)
+
+    days = int(request.POST.get('days'))
+
+    if store.activation_end:
+        store.activation_end += timedelta(days=days)
+    else:
+        store.activation_end = timezone.now() + timedelta(days=days)
+
+    store.save()
+
+    messages.success(request, "Store subscription extended.")
+
+    return redirect('admin_dashboard')
+
 
 
 # Login
@@ -75,6 +101,8 @@ def admin_manager_only(view_func):
 #
 #    return HttpResponse(json.dumps(resp), content_type='application/json')
 
+from django.utils import timezone
+
 def login_user(request):
     logout(request)
     resp = {"status": "failed", "msg": ""}
@@ -90,31 +118,49 @@ def login_user(request):
         user = authenticate(username=username, password=password)
 
         if user is not None:
-            if user.is_active:
-                login(request, user)
-                resp['status'] = 'success'
-                resp['role'] = user.role
-                resp['username'] = user.username
 
-
-                if user.role == 'admin':
-                    resp['redirect_url'] = '/system-admin/dashboard/'
-
-                elif user.role == 'manager':
-                    resp['redirect_url'] = '/'
-                elif user.role == 'cashier':
-                    resp['redirect_url'] = '/pos'
-                else:
-                    resp['redirect_url'] = '/'
-
-                # Optional: Add store info if needed
-                if hasattr(user, 'owned_stores'):
-                    stores = user.owned_stores.all()
-                    resp['stores'] = [store.name for store in stores]
-            else:
+            if not user.is_active:
                 resp['msg'] = "User account is inactive."
+                return HttpResponse(json.dumps(resp), content_type='application/json')
+
+            # ADMIN bypass
+            if user.role != "admin":
+
+                store = user.stores.first() or user.owned_stores.first()
+
+                if store:
+
+                    if store.is_expired():
+                        resp['msg'] = "Store subscription expired. Contact administrator."
+                        return HttpResponse(json.dumps(resp), content_type='application/json')
+
+                    remaining = store.days_remaining()
+
+                    if remaining is not None and remaining <= 3:
+                        resp['warning'] = f"Subscription expires in {remaining} day(s)."
+
+            login(request, user)
+
+            resp['status'] = 'success'
+            resp['role'] = user.role
+            resp['username'] = user.username
+
+            if user.role == 'admin':
+                resp['redirect_url'] = '/system-admin/dashboard/'
+            elif user.role == 'manager':
+                resp['redirect_url'] = '/'
+            elif user.role == 'cashier':
+                resp['redirect_url'] = '/pos'
+            else:
+                resp['redirect_url'] = '/'
+
+            if hasattr(user, 'owned_stores'):
+                stores = user.owned_stores.all()
+                resp['stores'] = [store.name for store in stores]
+
         else:
             resp['msg'] = "Incorrect username or password."
+
     else:
         resp['msg'] = "Invalid request method."
 
@@ -1320,13 +1366,45 @@ def create_store(request):
 
 
 @login_required
+
 def user_list(request):
+
     if request.user.role != 'admin':
         return redirect('login_user')
 
     users = CustomUser.objects.exclude(role='admin')
-    return render(request, 'posApp/user_list.html', {'users': users})
+    stores = Store.objects.select_related('owner')
 
+    context = {
+        "users": users,
+        "stores": stores
+    }
+
+    return render(request, 'posApp/user_list.html', context)
+
+
+def renew_store_subscription(request):
+
+    if request.method == "POST":
+
+        store_id = request.POST.get("store_id")
+        days = int(request.POST.get("days"))
+
+        store = Store.objects.get(id=store_id)
+
+        if store.activation_end and store.activation_end > timezone.now():
+
+            store.activation_end += timedelta(days=days)
+
+        else:
+            store.activation_end = timezone.now() + timedelta(days=days)
+
+        store.is_active = True
+        store.save()
+
+        messages.success(request, f"{store.name} subscription extended by {days} days.")
+
+    return redirect("user_list")
 
 from django.shortcuts import get_object_or_404
 
@@ -1385,34 +1463,70 @@ def manager_dashboard(request):
 from django.contrib import messages
 from django.contrib.auth.hashers import make_password
 
+from datetime import timedelta
+from django.utils import timezone
+
 def create_store_and_manager(request):
+
     if request.user.role != 'admin':
         return redirect('login_user')
 
     if request.method == 'POST':
+
         store_name = request.POST['store_name']
         store_location = request.POST.get('store_location', '')
+
         username = request.POST['username']
         password = request.POST['password']
         role = request.POST['role']
 
-        # Create the store (no owner yet)
-        store = Store.objects.create(name=store_name, location=store_location, owner=None)
+        activation_days = int(request.POST.get("activation_days", 30))
 
-        # Create the manager and assign the store
+        start_date = timezone.now()
+        end_date = start_date + timedelta(days=activation_days)
+
+        store = Store.objects.create(
+            name=store_name,
+            location=store_location,
+            activation_start=start_date,
+            activation_end=end_date
+        )
+
         manager = CustomUser.objects.create(
             username=username,
             password=make_password(password),
             role=role
         )
+
         store.owner = manager
         store.save()
 
-        messages.success(request, f"Store '{store.name}' and Manager '{manager.username}' created successfully.")
+        messages.success(
+            request,
+            f"Store '{store.name}' activated for {activation_days} days."
+        )
+
         return redirect('admin_dashboard')
 
+def check_store_subscription(request):
 
+    if request.user.role == 'admin':
+        return None
 
+    store = request.user.stores.first() or request.user.owned_stores.first()
+
+    if not store:
+        return None
+
+    if store.is_expired():
+        return "Your store subscription has expired. Contact administrator."
+
+    remaining_days = store.days_remaining()
+
+    if remaining_days is not None and remaining_days <= 5:
+        return f"Your store subscription expires in {remaining_days} days."
+
+    return None
 
 
 from django.utils import timezone

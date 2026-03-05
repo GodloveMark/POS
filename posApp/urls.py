@@ -78,6 +78,8 @@ urlpatterns = [
     path('stock-entry/edit/<int:entry_id>/', views.edit_stock_entry, name='edit_stock_entry'),
     path("stock/delete/<int:pk>/", views.delete_stock_entry, name="delete_stock_entry"),
 
+    path("renew-store-subscription/",views.renew_store_subscription,name="renew_store_subscription"),
+
 
     # path('employees', views.employees, name="employee-page"),
     # path('manage_employees', views.manage_employees, name="manage_employees-page"),

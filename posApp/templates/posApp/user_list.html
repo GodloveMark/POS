@@ -36,60 +36,156 @@
             <div class="table-responsive">
                 <table id="user-table" class="table table-hover align-middle mb-0">
                     <thead class="bg-light">
-                        <tr>
-                            <th class="ps-4 border-0 text-uppercase small fw-bold text-muted" style="width: 30%;">Username</th>
-                            <th class="border-0 text-uppercase small fw-bold text-muted text-center" style="width: 20%;">Role</th>
-                            <th class="border-0 text-uppercase small fw-bold text-muted" style="width: 30%;">Assigned Store</th>
-                            <th class="pe-4 border-0 text-uppercase small fw-bold text-muted text-end" style="width: 20%;">Actions</th>
-                        </tr>
-                    </thead>
+<tr>
+<th class="ps-4 border-0 text-uppercase small fw-bold text-muted">Username</th>
+<th class="border-0 text-uppercase small fw-bold text-muted text-center">Role</th>
+<th class="border-0 text-uppercase small fw-bold text-muted">Assigned Store</th>
+<th class="border-0 text-uppercase small fw-bold text-muted text-center">Expiry</th>
+<th class="border-0 text-uppercase small fw-bold text-muted text-center">Subscription</th>
+<th class="pe-4 border-0 text-uppercase small fw-bold text-muted text-end">Actions</th>
+</tr>
+</thead>
                     <tbody>
-                        {% for user in users %}
-                        <tr>
-                            <td class="ps-4">
-                                <div class="d-flex align-items-center">
-                                    <div class="avatar-sm me-3 bg-soft-primary text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 35px; height: 35px; background: #e0e7ff;">
-                                        <i class="fas fa-user-circle"></i>
-                                    </div>
-                                    <span class="fw-semibold">{{ user.username }}</span>
-                                </div>
-                            </td>
-                            <td class="text-center">
-                                {% if user.role == 'admin' %}
-                                    <span class="badge rounded-pill bg-danger bg-opacity-10 text-danger px-3">Administrator</span>
-                                {% elif user.role == 'manager' %}
-                                    <span class="badge rounded-pill bg-success bg-opacity-10 text-success px-3">Manager</span>
-                                {% else %}
-                                    <span class="badge rounded-pill bg-info bg-opacity-10 text-info px-3">{{ user.role|title }}</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% with store=user|get_user_store %}
-                                    {% if store %}
-                                        <span class="text-dark"><i class="fas fa-store me-1 text-muted"></i> {{ store.name }}</span>
-                                    {% else %}
-                                        <span class="text-muted italic small">Unassigned</span>
-                                    {% endif %}
-                                {% endwith %}
-                            </td>
-                            <td class="pe-4 text-end">
-                                <div class="dropdown">
-                                    <a href="{% url 'edit_user' user.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
-                                        <i class="fas fa-edit me-1"></i> Edit
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="4" class="text-center py-5">
-                                <img src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png" alt="Empty" style="width: 80px; opacity: 0.2;">
-                                <p class="mt-3 text-muted">No users found in the system.</p>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
+{% for user in users %}
+<tr>
+
+<td class="ps-4">
+<div class="d-flex align-items-center">
+<div class="avatar-sm me-3 bg-soft-primary text-primary rounded-circle d-flex align-items-center justify-content-center" style="width:35px;height:35px;background:#e0e7ff;">
+<i class="fas fa-user-circle"></i>
+</div>
+<span class="fw-semibold">{{ user.username }}</span>
+</div>
+</td>
+
+<td class="text-center">
+{% if user.role == 'admin' %}
+<span class="badge bg-danger bg-opacity-10 text-danger px-3">Administrator</span>
+{% elif user.role == 'manager' %}
+<span class="badge bg-success bg-opacity-10 text-success px-3">Manager</span>
+{% else %}
+<span class="badge bg-info bg-opacity-10 text-info px-3">{{ user.role|title }}</span>
+{% endif %}
+</td>
+
+<td>
+{% with store=user|get_user_store %}
+{% if store %}
+<i class="fas fa-store text-muted me-1"></i> {{ store.name }}
+{% else %}
+<span class="text-muted small">Unassigned</span>
+{% endif %}
+{% endwith %}
+</td>
+
+<td class="text-center">
+{% with store=user|get_user_store %}
+{% if store.activation_end %}
+{{ store.activation_end|date:"d M Y" }}
+{% else %}
+-
+{% endif %}
+{% endwith %}
+</td>
+
+<td class="text-center">
+
+{% with store=user|get_user_store %}
+{% if store %}
+
+{% if store.is_expired %}
+<span class="badge bg-danger">Expired</span>
+
+{% elif store.days_remaining <= 5 %}
+<span class="badge bg-warning text-dark">
+Expiring ({{ store.days_remaining }}d)
+</span>
+
+{% else %}
+<span class="badge bg-success">Active</span>
+{% endif %}
+
+{% else %}
+<span class="badge bg-secondary">N/A</span>
+{% endif %}
+{% endwith %}
+
+</td>
+
+<td class="text-end pe-4">
+
+<a href="{% url 'edit_user' user.id %}" 
+class="btn btn-outline-primary btn-sm rounded-pill px-3">
+<i class="fas fa-edit me-1"></i> Edit
+</a>
+
+{% with store=user|get_user_store %}
+{% if store %}
+<button class="btn btn-outline-success btn-sm rounded-pill px-3"
+data-bs-toggle="modal"
+data-bs-target="#renewModal"
+data-store-id="{{ store.id }}"
+data-store-name="{{ store.name }}">
+<i class="fas fa-sync-alt"></i> Renew
+</button>
+{% endif %}
+{% endwith %}
+
+</td>
+
+</tr>
+{% endfor %}
+</tbody>
                 </table>
+
+                <div class="modal fade" id="renewModal" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+
+<div class="modal-header">
+<h5 class="modal-title">Renew Store Subscription</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+<form method="POST" action="{% url 'renew_store_subscription' %}">
+{% csrf_token %}
+
+<div class="modal-body">
+
+<input type="hidden" name="store_id" id="store_id">
+
+<div class="mb-3">
+<label class="form-label">Store</label>
+<input type="text" id="store_name" class="form-control" readonly>
+</div>
+
+<div class="mb-3">
+<label class="form-label">Extend Subscription</label>
+
+<select name="days" class="form-control">
+
+<option value="30">30 Days</option>
+<option value="60">60 Days</option>
+<option value="90">90 Days</option>
+<option value="180">6 Months</option>
+<option value="365">1 Year</option>
+
+</select>
+
+</div>
+
+</div>
+
+<div class="modal-footer">
+<button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+<button class="btn btn-success">Renew Subscription</button>
+</div>
+
+</form>
+
+</div>
+</div>
+</div>
             </div>
             
             <div class="p-3 border-top d-flex justify-content-center">
@@ -126,4 +222,99 @@
         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
 </style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchBox = document.getElementById('search-box');
+    const itemsPerPageSelect = document.getElementById('items-per-page');
+    const table = document.getElementById('user-table');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const paginationUl = document.getElementById('pagination');
+
+    let currentPage = 1;
+    let filteredRows = [...rows];
+
+    function renderTable() {
+        const itemsPerPage = parseInt(itemsPerPageSelect.value);
+        const totalPages = Math.ceil(filteredRows.length / itemsPerPage);
+        
+        // Hide all rows
+        rows.forEach(row => row.style.display = 'none');
+
+        // Show rows for current page
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        
+        filteredRows.slice(start, end).forEach(row => {
+            row.style.display = '';
+        });
+
+        renderPagination(totalPages);
+    }
+
+    function renderPagination(totalPages) {
+        paginationUl.innerHTML = '';
+        if (totalPages <= 1) return;
+
+        for (let i = 1; i <= totalPages; i++) {
+            const li = document.createElement('li');
+            li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+            li.innerHTML = `<a class="page-link shadow-none" href="#">${i}</a>`;
+            li.addEventListener('click', (e) => {
+                e.preventDefault();
+                currentPage = i;
+                renderTable();
+            });
+            paginationUl.appendChild(li);
+        }
+    }
+
+    // Search Logic
+    searchBox.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        filteredRows = rows.filter(row => {
+            const text = row.innerText.toLowerCase();
+            return text.includes(searchTerm);
+        });
+
+        currentPage = 1; // Reset to first page on search
+        renderTable();
+
+        // Handle "No results" message
+        const existingNoResults = tbody.querySelector('.no-results');
+        if (filteredRows.length === 0) {
+            if (!existingNoResults) {
+                const tr = document.createElement('tr');
+                tr.className = 'no-results';
+                tr.innerHTML = `<td colspan="6" class="text-center py-5 text-muted">No users matching "${searchTerm}"</td>`;
+                tbody.appendChild(tr);
+            }
+        } else if (existingNoResults) {
+            existingNoResults.remove();
+        }
+    });
+
+    // Items Per Page Change
+    itemsPerPageSelect.addEventListener('change', () => {
+        currentPage = 1;
+        renderTable();
+    });
+
+    // Initialize Modal Logic (Keeping your existing logic)
+    var renewModal = document.getElementById('renewModal')
+    if(renewModal) {
+        renewModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget
+            var storeId = button.getAttribute('data-store-id')
+            var storeName = button.getAttribute('data-store-name')
+            document.getElementById('store_id').value = storeId
+            document.getElementById('store_name').value = storeName
+        })
+    }
+
+    // Initial Render
+    renderTable();
+});
+</script>
 {% endblock pageContent %}
